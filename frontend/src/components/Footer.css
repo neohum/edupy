@@ -1,0 +1,48 @@
+.footer {
+  background: #2d3748;
+  color: #cbd5e0;
+  padding: 2rem 0;
+  text-align: center;
+  margin-top: auto;
+}
+
+.footer .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.footer p {
+  margin: 0.5rem 0;
+}
+
+.footer-links {
+  margin: 1rem 0;
+}
+
+.footer-links a {
+  color: #667eea;
+  text-decoration: none;
+  margin: 0 1rem;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover {
+  color: #764ba2;
+}
+
+.footer-made-by {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.footer-made-by a {
+  color: #667eea;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-made-by a:hover {
+  color: #764ba2;
+}
+

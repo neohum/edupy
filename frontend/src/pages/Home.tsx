@@ -1,19 +1,12 @@
 import { Link } from 'react-router-dom';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
 import './Home.css';
 
 export default function Home() {
   return (
     <div className="home">
-      {/* Header */}
-      <header className="header">
-        <div className="container">
-          <h1 className="logo">🐍 EduPy</h1>
-          <nav className="nav">
-            <a href="#features">기능</a>
-            <a href="#about">소개</a>
-          </nav>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero Section */}
       <section className="hero">
@@ -22,7 +15,7 @@ export default function Home() {
             파이썬 학습의 모든 것
           </h2>
           <p className="hero-subtitle">
-            타이핑 연습부터 파이썬 학습, 파이게임 만들기까지<br />
+            타이핑 연습부터 파이썬 학습, 파이게임 기초 문법, 게임 만들기까지<br />
             <strong>회원가입 없이</strong> 바로 시작하세요!
           </p>
           <div className="hero-badges">
@@ -36,21 +29,22 @@ export default function Home() {
       {/* Features Section */}
       <section id="features" className="features">
         <div className="container">
-          <h3 className="section-title">세 가지 학습 모드</h3>
+          <h3 className="section-title">네 가지 학습 모드</h3>
           
           <div className="feature-grid">
             {/* Feature 1: 타이핑 연습 */}
             <div className="feature-card">
               <div className="feature-icon">⌨️</div>
-              <h4>한/영 자판 연습</h4>
-              <p>코딩에 필요한 타이핑 실력을 키워보세요</p>
-              <ul className="feature-list">
-                <li>실시간 WPM 측정</li>
-                <li>정확도 분석</li>
-                <li>진행도 자동 저장</li>
-                <li>취약 키 분석</li>
-              </ul>
-              <Link to="/typing" className="btn btn-primary">시작하기</Link>
+              <h4>한컴 타자 연습</h4>
+              <p>전문 타이핑 연습 사이트로 바로가기</p>
+              <a
+                href="https://tt.hancomtaja.com/ko?pr=D"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary"
+              >
+                바로가기
+              </a>
             </div>
 
             {/* Feature 2: 파이썬 학습 */}
@@ -65,10 +59,24 @@ export default function Home() {
                 <li>퀴즈 및 연습 문제</li>
                 <li>코드 저장 기능</li>
               </ul>
+              <Link to="/python" className="btn btn-primary">시작하기</Link>
+            </div>
+
+            {/* Feature 3: 파이게임 기초 문법 학습 */}
+            <div className="feature-card">
+              <div className="feature-icon">📚</div>
+              <h4>파이게임 기초 문법 학습</h4>
+              <p>게임 개발에 필요한 파이썬 문법</p>
+              <ul className="feature-list">
+                <li>변수·연산·함수 (캐릭터 관리)</li>
+                <li>조건문·반복문 (이동·입력)</li>
+                <li>리스트·딕셔너리 (적·아이템·점수)</li>
+                <li>random·while (랜덤·애니메이션)</li>
+              </ul>
               <button className="btn btn-primary" disabled>준비 중</button>
             </div>
 
-            {/* Feature 3: 파이게임 */}
+            {/* Feature 4: 파이게임 만들기 */}
             <div className="feature-card">
               <div className="feature-icon">🎮</div>
               <h4>파이게임 만들기</h4>
@@ -118,18 +126,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="footer">
-        <div className="container">
-          <p>© 2025 EduPy. 모든 학습 데이터는 브라우저에 안전하게 저장됩니다.</p>
-          <p className="footer-links">
-            <a href="https://github.com/neohum/edupy" target="_blank" rel="noopener noreferrer">
-              GitHub
-            </a>
-          </p>
-          <p className="footer-made-by">Made by <a href="https://schoolworks.kr" target="_blank" rel="noopener noreferrer">schoolworks.kr</a></p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

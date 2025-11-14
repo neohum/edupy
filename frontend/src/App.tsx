@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
-import TypingPractice from './pages/TypingPractice';
+import PythonLearning from './pages/PythonLearning';
+import TestCurriculum from './pages/TestCurriculum';
 import './App.css';
 
 function App() {
@@ -8,7 +9,8 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/typing" element={<TypingPractice />} />
+        <Route path="/python" element={<PythonLearning />} />
+        <Route path="/test" element={<TestCurriculum />} />
       </Routes>
     </Router>
   );
