@@ -38,15 +38,15 @@ EduPy는 프로그래밍 입문자를 위한 통합 학습 플랫폼입니다. �
 
 ### Frontend
 - **Framework**: React 18 + TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS
+- **Build Tool**: Vite (핫리로딩 지원)
+- **Styling**: CSS Modules
 - **State Management**: Zustand
-- **Code Editor**: Monaco Editor
+- **Code Editor**: Monaco Editor (예정)
 - **Routing**: React Router v6
-- **Charts**: Recharts
+- **Charts**: Recharts (예정)
 
 ### Backend
-- **Framework**: FastAPI
+- **Framework**: FastAPI (핫리로딩 지원)
 - **Language**: Python 3.11+
 - **Database**: PostgreSQL (콘텐츠 저장용)
 - **ORM**: SQLAlchemy
@@ -98,50 +98,75 @@ edupy/
 ### 사전 요구사항
 - Node.js 18+
 - Python 3.11+
-- PostgreSQL (또는 Supabase 계정)
-- Docker (코드 실행 기능용)
+- npm 또는 yarn
 
-### Frontend 설정
+### 🎯 한 번에 모두 실행하기 (권장)
 
 ```bash
-# 프론트엔드 디렉토리로 이동
-cd frontend
+# 1. 모든 의존성 설치
+npm run setup
 
-# 의존성 설치
-npm install
-
-# 개발 서버 실행
+# 2. 프론트엔드와 백엔드 동시 실행 (핫리로딩 지원)
 npm run dev
 ```
 
-Frontend는 `http://localhost:5173`에서 실행됩니다.
+이 명령어로 다음이 동시에 실행됩니다:
+- **Frontend**: http://localhost:5173 (Vite 핫리로딩)
+- **Backend**: http://localhost:8000 (Uvicorn 핫리로딩)
+- **API Docs**: http://localhost:8000/docs (Swagger UI)
 
-### Backend 설정
+### 개별 실행
+
+#### Frontend만 실행
 
 ```bash
-# 백엔드 디렉토리로 이동
-cd backend
-
-# 가상환경 생성 및 활성화
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 의존성 설치
-pip install -r requirements.txt
-
-# 환경 변수 설정
-cp .env.example .env
-# .env 파일을 편집하여 데이터베이스 연결 정보 등을 설정
-
-# 데이터베이스 마이그레이션
-alembic upgrade head
-
-# 개발 서버 실행
-uvicorn app.main:app --reload
+npm run frontend
+# 또는
+cd frontend && npm run dev
 ```
 
-Backend는 `http://localhost:8000`에서 실행됩니다.
-API 문서는 `http://localhost:8000/docs`에서 확인할 수 있습니다.
+#### Backend만 실행
+
+```bash
+npm run backend
+# 또는
+cd backend && python main.py
+```
+
+### 처음 설정하기
+
+#### 1. 전체 프로젝트 설정
+
+```bash
+# 루트 디렉토리에서 실행
+npm run setup
+```
+
+이 명령어는 다음을 수행합니다:
+- 루트 package.json 의존성 설치 (concurrently)
+- Frontend 의존성 설치
+- Backend 의존성 설치 (Python 가상환경 필요)
+
+#### 2. Backend 가상환경 설정 (처음 한 번만)
+
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+#### 3. 개발 서버 실행
+
+```bash
+# 루트 디렉토리에서
+npm run dev
+```
+
+이제 다음 URL에서 확인할 수 있습니다:
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
 
 ## 📚 문서
 
