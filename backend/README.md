@@ -38,6 +38,6 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 - `GET /` - API 정보
 - `GET /health` - 헬스 체크
-- `GET /api/typing/lessons` - 타이핑 레슨 목록 (예정)
 - `POST /api/python/execute` - 파이썬 코드 실행 (예정)
+- `GET /api/pygame/lessons` - 파이게임 레슨 목록 (예정)
 
