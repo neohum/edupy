@@ -1,0 +1,97 @@
+.keyboard-visualizer {
+  width: 100%;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.keyboard-container {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.keyboard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.keyboard-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.keyboard-row.row-2 {
+  padding-left: 20px;
+}
+
+.keyboard-row.row-3 {
+  padding-left: 30px;
+}
+
+.keyboard-row.row-4 {
+  padding-left: 50px;
+}
+
+.key {
+  min-width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #ddd;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  background: #fff;
+  color: #333;
+  transition: all 0.2s ease;
+  cursor: default;
+  user-select: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.key.spacebar {
+  min-width: 300px;
+}
+
+.key.active {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  animation: pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1.1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .keyboard {
+    transform: scale(0.7);
+  }
+
+  .key {
+    min-width: 40px;
+    height: 40px;
+    font-size: 14px;
+  }
+
+  .key.spacebar {
+    min-width: 200px;
+  }
+}
+
