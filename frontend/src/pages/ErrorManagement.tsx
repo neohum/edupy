@@ -40,6 +40,7 @@ interface BulkVerificationResult extends VerificationResult {
   level: number;
   activity: string;
   error_message: string;
+  user_code: string;
 }
 
 export default function ErrorManagement() {
@@ -48,6 +49,8 @@ export default function ErrorManagement() {
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ErrorReport | null>(null);
   const [activeTab, setActiveTab] = useState<'statistics' | 'reports'>('statistics');
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [errorCopied, setErrorCopied] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'resolved' | 'unresolved'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalReports, setTotalReports] = useState(0);
@@ -126,6 +129,30 @@ export default function ErrorManagement() {
     if (message.length <= maxLength) return message;
     return message.substring(0, maxLength) + '...';
   };
+
+  // 코드 복사 함수
+  const copyCode = useCallback(async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 2000);
+    } catch (error) {
+      console.error('코드 복사 실패:', error);
+      alert('코드 복사에 실패했습니다.');
+    }
+  }, []);
+
+  // 오류 메시지 복사 함수
+  const copyError = useCallback(async (errorMessage: string) => {
+    try {
+      await navigator.clipboard.writeText(errorMessage);
+      setErrorCopied(true);
+      setTimeout(() => setErrorCopied(false), 2000);
+    } catch (error) {
+      console.error('오류 메시지 복사 실패:', error);
+      alert('오류 메시지 복사에 실패했습니다.');
+    }
+  }, []);
 
   // 코드 검증 함수 (최적화)
   const verifyCode = useCallback(async (report: ErrorReport) => {
@@ -267,6 +294,7 @@ export default function ErrorManagement() {
               level: report.level,
               activity: report.activity,
               error_message: report.error_message,
+              user_code: report.user_code,
               ...result,
             };
           } catch {
@@ -274,6 +302,7 @@ export default function ErrorManagement() {
               id: report.id,
               level: report.level,
               activity: report.activity,
+              user_code: report.user_code,
               error_message: report.error_message,
               success: false,
               error_occurred: true,
@@ -560,7 +589,19 @@ export default function ErrorManagement() {
                         <span className="report-level">{report.level}</span>
                       </div>
                       <div className="report-activity">{report.activity}</div>
-                      <div className="report-error">{truncateMessage(report.error_message)}</div>
+                      <div className="report-error-container">
+                        <div className="report-error">{truncateMessage(report.error_message)}</div>
+                        <button
+                          className="copy-error-button-mini"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyError(report.error_message);
+                          }}
+                          title="오류 메시지 복사"
+                        >
+                          {errorCopied ? '✅' : '📋'}
+                        </button>
+                      </div>
                       <div className="report-footer">
                         <div className="report-times">
                           <div className="report-time">
@@ -657,12 +698,30 @@ export default function ErrorManagement() {
                 </div>
 
                 <div className="detail-section">
-                  <h3>❌ 오류 메시지</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <h3 style={{ margin: 0 }}>❌ 오류 메시지</h3>
+                    <button
+                      className="copy-code-button"
+                      onClick={() => copyError(selectedReport.error_message)}
+                      title="오류 메시지 복사"
+                    >
+                      {errorCopied ? '✅ 복사됨!' : '📋 복사'}
+                    </button>
+                  </div>
                   <div className="error-message-box">{selectedReport.error_message}</div>
                 </div>
 
                 <div className="detail-section">
-                  <h3>💻 사용자 코드</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <h3 style={{ margin: 0 }}>💻 사용자 코드</h3>
+                    <button
+                      className="copy-code-button"
+                      onClick={() => copyCode(selectedReport.user_code)}
+                      title="코드 복사"
+                    >
+                      {codeCopied ? '✅ 복사됨!' : '📋 복사'}
+                    </button>
+                  </div>
                   <pre className="code-box">{selectedReport.user_code}</pre>
                 </div>
 
@@ -704,7 +763,21 @@ export default function ErrorManagement() {
                 </div>
 
                 <div className="detail-section">
-                  <h3>💻 코드 실행 결과</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <h3 style={{ margin: 0 }}>💻 사용자 코드</h3>
+                    <button
+                      className="copy-code-button"
+                      onClick={() => copyCode(verifyingReport.user_code)}
+                      title="코드 복사"
+                    >
+                      {codeCopied ? '✅ 복사됨!' : '📋 복사'}
+                    </button>
+                  </div>
+                  <pre className="code-box">{verifyingReport.user_code}</pre>
+                </div>
+
+                <div className="detail-section">
+                  <h3>🔍 코드 실행 결과</h3>
                   {isVerifying ? (
                     <div className="verification-loading">
                       <span className="spinner"></span>
@@ -717,8 +790,17 @@ export default function ErrorManagement() {
                           <div className="result-status error">
                             ❌ 오류가 여전히 발생합니다
                           </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <strong>오류 메시지:</strong>
+                            <button
+                              className="copy-code-button-small"
+                              onClick={() => copyError(verificationResult.error_message || '')}
+                              title="오류 메시지 복사"
+                            >
+                              {errorCopied ? '✅' : '📋'}
+                            </button>
+                          </div>
                           <div className="error-message-box">
-                            <strong>오류 메시지:</strong><br />
                             {verificationResult.error_message}
                           </div>
                           <div className="suggestion-box">
@@ -840,12 +922,35 @@ export default function ErrorManagement() {
                         </span>
                       </div>
                       <div className="item-body">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                          <strong>💻 사용자 코드</strong>
+                          <button
+                            className="copy-code-button-small"
+                            onClick={() => copyCode(result.user_code)}
+                            title="코드 복사"
+                          >
+                            {codeCopied ? '✅' : '📋'}
+                          </button>
+                        </div>
+                        <pre className="code-box-small">{result.user_code}</pre>
+
                         {result.error_occurred ? (
                           <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', marginTop: '0.5rem' }}>
+                              <strong>❌ 오류 메시지</strong>
+                              <button
+                                className="copy-code-button-small"
+                                onClick={() => copyError(result.error_message_new || result.error_message)}
+                                title="오류 메시지 복사"
+                              >
+                                {errorCopied ? '✅' : '📋'}
+                              </button>
+                            </div>
                             <div className="item-error">
-                              <strong>오류:</strong> {result.error_message_new || result.error_message}
+                              {result.error_message_new || result.error_message}
                             </div>
                             <div className="item-suggestion">
+                              <strong>💡 해결 방법:</strong><br />
                               {result.suggestion}
                             </div>
                           </>

@@ -141,20 +141,32 @@ async def execute_turtle_code(request: TurtleCodeRequest):
 @app.post("/api/error-report")
 async def send_error_report(report: ErrorReport):
     """
-    사용자가 발생시킨 오류를 이메일로 전송하고 DB에 저장
+    사용자가 발생시킨 오류를 이메일로 전송하고 DB에 저장 (중복 체크 포함)
     """
     logger.info(f"Received error report for {report.level} - {report.activity}")
 
     try:
-        # 1. DB에 오류 저장
-        error_id = save_error_report(
+        # 1. DB에 오류 저장 (중복 체크 포함)
+        save_result = save_error_report(
             level=report.level,
             activity=report.activity,
             error_message=report.error_message,
             user_code=report.user_code,
             timestamp=report.timestamp
         )
-        logger.info(f"Error saved to database with ID: {error_id}")
+
+        # 중복 오류인 경우
+        if save_result['duplicate']:
+            logger.info(f"Duplicate error detected: {save_result['existing_error']['id']}")
+            return {
+                "success": False,
+                "duplicate": True,
+                "message": save_result['message'],
+                "existing_error": save_result['existing_error']
+            }
+
+        error_id = save_result['error_id']
+        logger.info(f"New error saved to database with ID: {error_id}")
 
         # 2. 환경 변수에서 이메일 주소 가져오기
         to_email = os.getenv("ERROR_REPORT_EMAIL", "neohum77@gmail.com")

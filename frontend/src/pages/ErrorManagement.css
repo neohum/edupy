@@ -580,11 +580,18 @@
   margin-bottom: 10px;
 }
 
+.report-error-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
 .report-error {
   color: #718096;
   font-size: 0.9rem;
   line-height: 1.5;
-  margin-bottom: 15px;
+  flex: 1;
 }
 
 .report-footer {
@@ -804,6 +811,72 @@
   line-height: 1.6;
 }
 
+.copy-code-button {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.copy-code-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.copy-code-button:active {
+  transform: translateY(0);
+}
+
+.copy-code-button-small {
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.copy-code-button-small:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+.copy-code-button-small:active {
+  transform: translateY(0);
+}
+
+.copy-error-button-mini {
+  padding: 4px 8px;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.copy-error-button-mini:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+.copy-error-button-mini:active {
+  transform: translateY(0);
+}
+
 .code-box {
   background: #2d3748;
   color: #e2e8f0;
@@ -813,6 +886,20 @@
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 0.9rem;
   line-height: 1.6;
+}
+
+.code-box-small {
+  background: #2d3748;
+  color: #e2e8f0;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  margin-bottom: 10px;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 /* Verification Modal */
