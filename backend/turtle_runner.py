@@ -22,7 +22,15 @@ class TurtleSimulator:
         self.angle = 90.0  # 북쪽 방향 (위)
         self.pen_down = True
         self.pen_color = 'black'
+        self.fill_color = 'black'
+        self.pen_size = 1
+        self.speed_value = 6
+        self.is_visible = True
+        self.turtle_shape = 'classic'  # 거북이 모양
+        self.filling = False
+        self.fill_points: List[Tuple[float, float]] = []
         self.lines: List[dict] = []
+        self.filled_shapes: List[dict] = []  # 채워진 도형들
         self.record_frames = record_frames
         self.frames: List[List[dict]] = []  # 각 프레임의 선 목록
         self.positions: List[Tuple[float, float, float]] = []  # 거북이 위치 기록 (x, y, angle)
@@ -30,8 +38,12 @@ class TurtleSimulator:
     def _save_frame(self):
         """현재 상태를 프레임으로 저장"""
         if self.record_frames:
-            # 현재까지의 모든 선을 복사하여 저장
-            self.frames.append([line.copy() for line in self.lines])
+            # 현재까지의 모든 선과 채워진 도형을 복사하여 저장
+            frame_data = {
+                'lines': [line.copy() for line in self.lines],
+                'filled_shapes': [shape.copy() for shape in self.filled_shapes]
+            }
+            self.frames.append(frame_data)
             # 현재 거북이 위치 저장
             self.positions.append((self.x, self.y, self.angle))
 
@@ -56,6 +68,10 @@ class TurtleSimulator:
 
                 self.x = new_x
                 self.y = new_y
+
+                # filling 모드일 때 점 기록
+                if self.filling:
+                    self.fill_points.append((self.x, self.y))
         else:
             # 정적 모드일 때는 한 번에 이동
             new_x = self.x + distance * np.cos(np.radians(self.angle))
@@ -70,6 +86,10 @@ class TurtleSimulator:
 
             self.x = new_x
             self.y = new_y
+
+            # filling 모드일 때 점 기록
+            if self.filling:
+                self.fill_points.append((self.x, self.y))
 
     def backward(self, distance: float):
         """뒤로 이동"""
@@ -129,13 +149,272 @@ class TurtleSimulator:
         """아무것도 하지 않음 (호환성)"""
         pass
 
+    # === Turtle Motion Methods ===
+    def fd(self, distance: float):
+        """forward의 별칭"""
+        self.forward(distance)
 
-def render_frame(lines: List[dict], width: int, height: int, turtle_pos: Tuple[float, float, float] = None) -> str:
+    def bk(self, distance: float):
+        """backward의 별칭"""
+        self.backward(distance)
+
+    def back(self, distance: float):
+        """backward의 별칭"""
+        self.backward(distance)
+
+    def rt(self, angle: float):
+        """right의 별칭"""
+        self.right(angle)
+
+    def lt(self, angle: float):
+        """left의 별칭"""
+        self.left(angle)
+
+    def goto(self, x: float, y: float = None):
+        """특정 위치로 이동"""
+        if y is None:
+            # (x, y) 튜플로 전달된 경우
+            if isinstance(x, (tuple, list)):
+                y = x[1]
+                x = x[0]
+            else:
+                return
+
+        if self.pen_down:
+            self.lines.append({
+                'x': [self.x, x],
+                'y': [self.y, y],
+                'color': self.pen_color
+            })
+            if self.record_frames:
+                self._save_frame()
+
+        self.x = x
+        self.y = y
+
+    def setpos(self, x: float, y: float = None):
+        """goto의 별칭"""
+        self.goto(x, y)
+
+    def setposition(self, x: float, y: float = None):
+        """goto의 별칭"""
+        self.goto(x, y)
+
+    def setx(self, x: float):
+        """x 좌표만 설정"""
+        self.goto(x, self.y)
+
+    def sety(self, y: float):
+        """y 좌표만 설정"""
+        self.goto(self.x, y)
+
+    def setheading(self, to_angle: float):
+        """방향 설정"""
+        self.angle = to_angle
+
+    def seth(self, to_angle: float):
+        """setheading의 별칭"""
+        self.setheading(to_angle)
+
+    def home(self):
+        """원점으로 이동하고 방향을 북쪽으로"""
+        self.goto(0, 0)
+        self.setheading(90)
+
+    # === Tell Turtle's State ===
+    def position(self):
+        """현재 위치 반환"""
+        return (self.x, self.y)
+
+    def pos(self):
+        """position의 별칭"""
+        return self.position()
+
+    def xcor(self):
+        """x 좌표 반환"""
+        return self.x
+
+    def ycor(self):
+        """y 좌표 반환"""
+        return self.y
+
+    def heading(self):
+        """현재 방향 반환"""
+        return self.angle
+
+    def distance(self, x: float, y: float = None):
+        """특정 위치까지의 거리"""
+        if y is None:
+            if isinstance(x, (tuple, list)):
+                y = x[1]
+                x = x[0]
+        return np.sqrt((self.x - x)**2 + (self.y - y)**2)
+
+    # === Pen Control ===
+    def pd(self):
+        """pendown의 별칭"""
+        self.pendown()
+
+    def down(self):
+        """pendown의 별칭"""
+        self.pendown()
+
+    def pu(self):
+        """penup의 별칭"""
+        self.penup()
+
+    def up(self):
+        """penup의 별칭"""
+        self.penup()
+
+    def pensize(self, width: int = None):
+        """펜 두께 설정/반환"""
+        if width is None:
+            return self.pen_size
+        self.pen_size = width
+
+    def width(self, width: int = None):
+        """pensize의 별칭"""
+        return self.pensize(width)
+
+    def isdown(self):
+        """펜이 내려져 있는지 확인"""
+        return self.pen_down
+
+    # === Color Control ===
+    def color(self, *args):
+        """펜 색상과 채우기 색상 설정"""
+        if len(args) == 0:
+            return (self.pen_color, self.fill_color)
+        elif len(args) == 1:
+            self.pen_color = args[0]
+            self.fill_color = args[0]
+        elif len(args) == 2:
+            self.pen_color = args[0]
+            self.fill_color = args[1]
+
+    def fillcolor(self, color: str = None):
+        """채우기 색상 설정/반환"""
+        if color is None:
+            return self.fill_color
+        self.fill_color = color
+
+    # === Filling ===
+    def begin_fill(self):
+        """채우기 시작"""
+        self.filling = True
+        self.fill_points = [(self.x, self.y)]
+
+    def end_fill(self):
+        """채우기 종료"""
+        if self.filling and len(self.fill_points) > 2:
+            self.filled_shapes.append({
+                'points': self.fill_points.copy(),
+                'color': self.fill_color
+            })
+            if self.record_frames:
+                self._save_frame()
+        self.filling = False
+        self.fill_points = []
+
+    # === More Drawing Control ===
+    def dot(self, size: int = None, color: str = None):
+        """점 그리기"""
+        if size is None:
+            size = max(self.pen_size + 4, 2 * self.pen_size)
+        if color is None:
+            color = self.pen_color
+
+        # 점을 작은 원으로 표현
+        self.lines.append({
+            'x': [self.x],
+            'y': [self.y],
+            'color': color,
+            'marker': 'o',
+            'markersize': size
+        })
+        if self.record_frames:
+            self._save_frame()
+
+    def speed(self, speed: int = None):
+        """속도 설정 (시뮬레이션에서는 무시)"""
+        if speed is None:
+            return self.speed_value
+        self.speed_value = speed
+
+    def hideturtle(self):
+        """거북이 숨기기"""
+        self.is_visible = False
+
+    def ht(self):
+        """hideturtle의 별칭"""
+        self.hideturtle()
+
+    def showturtle(self):
+        """거북이 보이기"""
+        self.is_visible = True
+
+    def st(self):
+        """showturtle의 별칭"""
+        self.showturtle()
+
+    def isvisible(self):
+        """거북이가 보이는지 확인"""
+        return self.is_visible
+
+    def shape(self, name=None):
+        """
+        거북이 모양 설정/반환
+
+        Args:
+            name: 모양 이름 ('arrow', 'turtle', 'circle', 'square', 'triangle', 'classic')
+                  None이면 현재 모양 반환
+        """
+        if name is None:
+            return self.turtle_shape
+
+        # 지원되는 모양 목록
+        valid_shapes = ['arrow', 'turtle', 'circle', 'square', 'triangle', 'classic']
+        if name in valid_shapes:
+            self.turtle_shape = name
+        else:
+            # 지원하지 않는 모양이면 기본값 유지
+            pass
+
+    def title(self, titlestring=None):
+        """
+        창 제목 설정 (시뮬레이션에서는 무시)
+
+        Args:
+            titlestring: 창 제목 문자열
+        """
+        # 시뮬레이션 환경에서는 창이 없으므로 무시
+        pass
+
+    def setup(self, width=None, height=None, startx=None, starty=None):
+        """
+        화면 크기 및 위치 설정 (시뮬레이션에서는 무시)
+
+        Args:
+            width: 창 너비
+            height: 창 높이
+            startx: 창 시작 x 좌표
+            starty: 창 시작 y 좌표
+        """
+        # 시뮬레이션 환경에서는 창 크기가 고정되어 있으므로 무시
+        pass
+
+    def done(self):
+        """완료 (호환성을 위해 추가)"""
+        pass
+
+
+def render_frame(frame_data, width: int, height: int, turtle_pos: Tuple[float, float, float] = None) -> str:
     """
     프레임을 이미지로 렌더링
 
     Args:
-        lines: 그려진 선들의 리스트
+        frame_data: dict with 'lines' and 'filled_shapes' or just a list of lines (legacy)
         width: 캔버스 너비
         height: 캔버스 높이
         turtle_pos: 거북이 위치 (x, y, angle) - None이면 거북이를 그리지 않음
@@ -146,9 +425,31 @@ def render_frame(lines: List[dict], width: int, height: int, turtle_pos: Tuple[f
     ax.set_ylim(-height/2, height/2)
     ax.axis('off')
 
+    # frame_data가 dict인지 list인지 확인 (하위 호환성)
+    if isinstance(frame_data, dict):
+        lines = frame_data.get('lines', [])
+        filled_shapes = frame_data.get('filled_shapes', [])
+    else:
+        lines = frame_data
+        filled_shapes = []
+
+    # 채워진 도형 먼저 그리기 (배경)
+    for shape in filled_shapes:
+        points = shape['points']
+        if len(points) > 2:
+            xs = [p[0] for p in points]
+            ys = [p[1] for p in points]
+            ax.fill(xs, ys, color=shape['color'], alpha=0.7)
+
     # 모든 선 그리기
     for line in lines:
-        ax.plot(line['x'], line['y'], color=line['color'], linewidth=2)
+        if 'marker' in line:
+            # 점 그리기
+            ax.plot(line['x'], line['y'], color=line['color'],
+                   marker=line['marker'], markersize=line.get('markersize', 10))
+        else:
+            # 선 그리기
+            ax.plot(line['x'], line['y'], color=line['color'], linewidth=2)
 
     # 거북이 그리기 (PNG 이미지 사용)
     if turtle_pos is not None:
@@ -228,6 +529,7 @@ def run_turtle_code(code: str, width: int = 600, height: int = 600, animate: boo
             'input': mock_input,
             'int': int,
             'range': range,
+            '__import__': __import__,  # import 문 지원
             '_': None  # for _ in range() 지원
         }
 
@@ -237,10 +539,10 @@ def run_turtle_code(code: str, width: int = 600, height: int = 600, animate: boo
         # 애니메이션 모드인 경우 모든 프레임 렌더링
         if animate and t.frames:
             frames = []
-            for i, frame_lines in enumerate(t.frames):
+            for i, frame_data in enumerate(t.frames):
                 # 해당 프레임의 거북이 위치 가져오기
                 turtle_pos = t.positions[i] if i < len(t.positions) else None
-                frame_image = render_frame(frame_lines, width, height, turtle_pos)
+                frame_image = render_frame(frame_data, width, height, turtle_pos)
                 frames.append(frame_image)
 
             return {
@@ -251,8 +553,12 @@ def run_turtle_code(code: str, width: int = 600, height: int = 600, animate: boo
             }
 
         # 정적 이미지 모드 - 최종 결과만 렌더링 (거북이 위치 포함)
-        final_turtle_pos = (t.x, t.y, t.angle)
-        final_image = render_frame(t.lines, width, height, final_turtle_pos)
+        final_turtle_pos = (t.x, t.y, t.angle) if t.is_visible else None
+        final_frame_data = {
+            'lines': t.lines,
+            'filled_shapes': t.filled_shapes
+        }
+        final_image = render_frame(final_frame_data, width, height, final_turtle_pos)
 
         return {
             'success': True,
