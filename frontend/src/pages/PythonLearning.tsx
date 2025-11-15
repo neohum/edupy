@@ -1,11 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
+import Joyride from 'react-joyride';
+import type { CallBackProps, Step } from 'react-joyride';
+import Swal from 'sweetalert2';
 import { pythonCurriculum, conceptExplanations } from '../data/pythonCurriculum';
 import { useProgress, useCompletedActivities } from '../hooks/useLocalStorage';
 import { usePyodide, setupPythonEnvironment, wrapUserCode } from '../hooks/usePyodide';
 import ProgressModal from '../components/ProgressModal';
 import ErrorReportButton from '../components/ErrorReportButton';
 import Footer from '../components/Footer';
+import { API_ENDPOINTS } from '../config/api';
 import './PythonLearning.css';
 
 export default function PythonLearning() {
@@ -25,6 +29,50 @@ export default function PythonLearning() {
   const [userInput, setUserInput] = useState('');
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [errorInfo, setErrorInfo] = useState<{message: string, code: string} | null>(null);
+
+  // 검색 관련 상태
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Array<{title: string, url: string, description: string}>>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // 가이드 투어 상태
+  const [runTour, setRunTour] = useState(false);
+  const [tourCompleted, setTourCompleted] = useState(false);
+  const [tourSteps] = useState<Step[]>([
+    {
+      target: '.progress-info',
+      content: '여기서 전체 학습 진행 상황을 확인할 수 있습니다. 총 50개의 활동 중 완료한 개수가 표시됩니다.',
+      disableBeacon: true,
+    },
+    {
+      target: '.activity-info-box',
+      content: '현재 활동의 제목, 설명, 핵심 개념이 표시됩니다. 각 활동은 특정 파이썬 개념을 학습하도록 설계되었습니다.',
+    },
+    {
+      target: '.example-code-section',
+      content: '예제 코드를 확인하고 복사할 수 있습니다. 복사 버튼을 클릭하면 코드가 클립보드에 복사됩니다.',
+    },
+    {
+      target: '.code-editor-section',
+      content: 'Monaco 에디터에서 파이썬 코드를 작성할 수 있습니다. 자동 완성과 문법 강조 기능을 제공합니다.',
+    },
+    {
+      target: '.run-button',
+      content: '작성한 코드를 실행하려면 이 버튼을 클릭하세요. Pyodide를 사용하여 브라우저에서 직접 실행됩니다.',
+    },
+    {
+      target: '.output-section',
+      content: '코드 실행 결과가 여기에 표시됩니다. 오류가 발생하면 오류 메시지도 함께 표시됩니다.',
+    },
+    {
+      target: '.page-title-wrapper',
+      content: '이전/다음 버튼으로 활동을 이동할 수 있습니다. 진행 상황은 자동으로 저장됩니다. ❓ 버튼을 클릭하면 언제든 이 가이드를 다시 볼 수 있습니다.',
+    },
+    {
+      target: '.search-box',
+      content: '궁금한 내용을 검색할 수 있습니다. DuckDuckGo 검색 결과를 제공합니다.',
+    },
+  ]);
 
   const inputResolveRef = useRef<any>(null);
 
@@ -87,6 +135,96 @@ export default function PythonLearning() {
 
 
 
+  // 가이드 투어 시작 체크
+  useEffect(() => {
+    const hasSeenTour = localStorage.getItem('edupy_tour_completed');
+    if (!hasSeenTour) {
+      // 페이지 로드 후 1초 뒤에 투어 시작
+      const timer = setTimeout(() => {
+        setRunTour(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  // 투어 콜백 처리
+  const handleJoyrideCallback = async (data: CallBackProps) => {
+    const { status } = data;
+    const finishedStatuses: string[] = ['finished', 'skipped'];
+
+    if (finishedStatuses.includes(status) && !tourCompleted) {
+      setRunTour(false);
+      setTourCompleted(true);
+
+      // 투어 완료 여부 확인
+      if (status === 'finished') {
+        const result = await Swal.fire({
+          title: '🎉 가이드 투어 완료!',
+          html: `
+            <p style="font-size: 1.1rem; margin-bottom: 1rem;">
+              파이썬 학습 페이지의 모든 기능을 확인했습니다!
+            </p>
+            <p style="font-size: 0.95rem; color: #666;">
+              다음에도 이 가이드를 보시겠습니까?
+            </p>
+          `,
+          icon: 'success',
+          showCancelButton: true,
+          confirmButtonText: '네, 다음에도 보기',
+          cancelButtonText: '아니오, 다시 보지 않기',
+          confirmButtonColor: '#667eea',
+          cancelButtonColor: '#e53e3e',
+          reverseButtons: true,
+        });
+
+        if (result.isDismissed || result.dismiss === Swal.DismissReason.cancel) {
+          localStorage.setItem('edupy_tour_completed', 'true');
+          Swal.fire({
+            title: '설정 완료',
+            text: '다음부터 가이드 투어가 자동으로 표시되지 않습니다. ❓ 버튼을 클릭하면 언제든 다시 볼 수 있습니다.',
+            icon: 'info',
+            confirmButtonText: '확인',
+            confirmButtonColor: '#667eea',
+            timer: 3000,
+            timerProgressBar: true,
+          });
+        }
+      } else if (status === 'skipped') {
+        const result = await Swal.fire({
+          title: '가이드 투어 건너뛰기',
+          html: `
+            <p style="font-size: 1rem; margin-bottom: 1rem;">
+              가이드 투어를 건너뛰었습니다.
+            </p>
+            <p style="font-size: 0.95rem; color: #666;">
+              다음부터 이 가이드를 보지 않으시겠습니까?
+            </p>
+          `,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonText: '네, 다시 보지 않기',
+          cancelButtonText: '아니오, 다음에 보기',
+          confirmButtonColor: '#e53e3e',
+          cancelButtonColor: '#667eea',
+          reverseButtons: true,
+        });
+
+        if (result.isConfirmed) {
+          localStorage.setItem('edupy_tour_completed', 'true');
+          Swal.fire({
+            title: '설정 완료',
+            text: '다음부터 가이드 투어가 자동으로 표시되지 않습니다. ❓ 버튼을 클릭하면 언제든 다시 볼 수 있습니다.',
+            icon: 'info',
+            confirmButtonText: '확인',
+            confirmButtonColor: '#667eea',
+            timer: 3000,
+            timerProgressBar: true,
+          });
+        }
+      }
+    }
+  };
+
   // Pyodide 로딩 상태 표시
   useEffect(() => {
     if (loadingPyodide) {
@@ -98,7 +236,9 @@ export default function PythonLearning() {
 
   // 사용자 입력 제출
   const handleInputSubmit = async () => {
-    if (!userInput.trim() || !inputResolveRef.current) return;
+    if (!userInput.trim() || !inputResolveRef.current) {
+      return;
+    }
 
     const value = userInput;
     setOutput((prev) => prev + value + '\n');
@@ -190,16 +330,82 @@ export default function PythonLearning() {
 
     if (isTurtleCode) {
       try {
+        // turtle 코드에 input()이 있는지 확인
+        const hasInput = code.includes('input(');
+        let finalCode = code;
+        let inputValues: { [key: string]: string } = {};
+
+        if (hasInput) {
+          // input()이 있으면 alert로 입력값 수집
+          setOutput('📝 입력값을 받고 있습니다...\n');
+
+          // 코드에서 모든 input() 패턴 찾기
+          const inputPatterns = [
+            // int(input("prompt"))
+            /int\s*\(\s*input\s*\(\s*["']([^"']+)["']\s*\)\s*\)/g,
+            // float(input("prompt"))
+            /float\s*\(\s*input\s*\(\s*["']([^"']+)["']\s*\)\s*\)/g,
+            // input("prompt")
+            /input\s*\(\s*["']([^"']+)["']\s*\)/g,
+          ];
+
+          finalCode = code;
+
+          // 각 패턴에 대해 입력값 수집
+          for (const pattern of inputPatterns) {
+            const matches = [...code.matchAll(pattern)];
+
+            for (const match of matches) {
+              const promptText = match[1];
+
+              // 이미 처리된 경우 건너뛰기
+              if (inputValues[promptText]) continue;
+
+              // alert로 입력값 받기
+              const userValue = window.prompt(promptText);
+
+              if (userValue === null) {
+                // 취소 버튼 클릭 시
+                setOutput('❌ 입력이 취소되었습니다.');
+                setIsRunning(false);
+                return;
+              }
+
+              // 입력값 저장
+              inputValues[promptText] = userValue;
+              setOutput((prev) => prev + `${promptText} ${userValue}\n`);
+            }
+          }
+
+          // 수집된 입력값으로 코드 수정
+          for (const [prompt, value] of Object.entries(inputValues)) {
+            // 프롬프트를 이스케이프 처리
+            const escapedPrompt = prompt.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+            // int(input("prompt")) -> int(value) 형태로 대체
+            const intPattern = new RegExp(`int\\s*\\(\\s*input\\s*\\(\\s*["']${escapedPrompt}["']\\s*\\)\\s*\\)`, 'g');
+            finalCode = finalCode.replace(intPattern, `int(${value})`);
+
+            // float(input("prompt")) -> float(value) 형태로 대체
+            const floatPattern = new RegExp(`float\\s*\\(\\s*input\\s*\\(\\s*["']${escapedPrompt}["']\\s*\\)\\s*\\)`, 'g');
+            finalCode = finalCode.replace(floatPattern, `float(${value})`);
+
+            // input("prompt") -> "value" 형태로 대체 (문자열)
+            const inputPattern = new RegExp(`input\\s*\\(\\s*["']${escapedPrompt}["']\\s*\\)`, 'g');
+            finalCode = finalCode.replace(inputPattern, `"${value}"`);
+          }
+        }
+
         setOutput('🐢 Turtle 애니메이션을 생성하는 중...\n');
 
         // 백엔드로 turtle 코드 전송 (애니메이션 모드)
-        const response = await fetch('http://localhost:8000/api/turtle/execute', {
+        const response = await fetch(API_ENDPOINTS.turtleExecute, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            code: code,
+            code: finalCode,
             width: 600,
             height: 600,
             animate: true,  // 애니메이션 모드
@@ -367,8 +573,85 @@ export default function PythonLearning() {
     }
   };
 
+  // 검색 버튼 클릭 시 검색 실행
+  const handleSearchClick = async () => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+
+    try {
+      const response = await fetch(API_ENDPOINTS.search, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: searchQuery.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.results && data.results.length > 0) {
+        setSearchResults(data.results.slice(0, 10)); // 최대 10개
+      } else {
+        setSearchResults([]);
+        if (data.error) {
+          setOutput(`❌ 검색 오류: ${data.error}`);
+        }
+      }
+    } catch (error) {
+      console.error('검색 실패:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   return (
     <div className="python-learning">
+      {/* Joyride 가이드 투어 */}
+      <Joyride
+        steps={tourSteps}
+        run={runTour}
+        continuous
+        showProgress
+        showSkipButton
+        callback={handleJoyrideCallback}
+        styles={{
+          options: {
+            primaryColor: '#667eea',
+            zIndex: 10000,
+          },
+          tooltip: {
+            fontSize: 16,
+            padding: 20,
+          },
+          buttonNext: {
+            backgroundColor: '#667eea',
+            fontSize: 14,
+            padding: '10px 20px',
+          },
+          buttonBack: {
+            color: '#667eea',
+            fontSize: 14,
+            padding: '10px 20px',
+          },
+          buttonSkip: {
+            color: '#999',
+            fontSize: 14,
+          },
+        }}
+        locale={{
+          back: '이전',
+          close: '닫기',
+          last: '완료',
+          next: '다음',
+          skip: '건너뛰기',
+        }}
+      />
+
       {/* Header */}
       <header className="header">
         <div className="container">
@@ -389,6 +672,16 @@ export default function PythonLearning() {
             <h2 className="page-title">
               파이썬 기초 문법 - Level {currentLevel.level} ({currentActivityIndex + 1}/{currentLevel.activities.length})
               {completedActivities.has(currentActivity.id) && <span className="completed-badge">✓ 완료</span>}
+              <button
+                className="tour-restart-button"
+                onClick={() => {
+                  setTourCompleted(false);
+                  setRunTour(true);
+                }}
+                title="가이드 투어 다시 보기"
+              >
+                ❓
+              </button>
             </h2>
 
             <button
@@ -504,6 +797,80 @@ export default function PythonLearning() {
                 {currentActivity.hint}
               </div>
             )}
+
+            {/* 도움 받기 / 원하는 기능 찾기 */}
+            <div className="help-section">
+              <div className="help-header">
+                <span>🆘 도움 받기 / 원하는 기능 찾기</span>
+              </div>
+
+              {/* 검색창 */}
+              <div className="search-box">
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="궁금한 내용을 검색하세요 (예: 리스트, 반복문, 함수)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSearchClick();
+                    }
+                  }}
+                />
+                <button
+                  className="search-button"
+                  onClick={handleSearchClick}
+                  disabled={isSearching || !searchQuery.trim()}
+                >
+                  {isSearching ? '🔍 검색 중...' : '🔍 검색'}
+                </button>
+              </div>
+
+              {/* 검색 결과 */}
+              <div className="help-links">
+                {searchResults.length > 0 ? (
+                  <>
+                    <div className="search-results-header">
+                      🔍 검색 결과 {searchResults.length}개
+                    </div>
+                    {searchResults.map((result, index) => {
+                      // 아이콘 배열
+                      const icons = ['📚', '📖', '🎥', '💡', '🔗', '📝', '🌐', '📄', '🎓', '⭐'];
+                      return (
+                        <a
+                          key={index}
+                          href={result.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="help-link"
+                        >
+                          <div className="link-icon">
+                            {icons[index % icons.length]}
+                          </div>
+                          <div className="link-content">
+                            <div className="link-title">
+                              {index + 1}. {result.title}
+                            </div>
+                            <div className="link-description">
+                              {result.description}
+                            </div>
+                          </div>
+                        </a>
+                      );
+                    })}
+                  </>
+                ) : searchQuery && !isSearching ? (
+                  <div className="no-results">
+                    검색 결과가 없습니다. 다른 키워드로 검색해보세요.
+                  </div>
+                ) : !searchQuery ? (
+                  <div className="search-placeholder">
+                    💡 궁금한 내용을 검색하면 관련 학습 자료를 찾아드립니다!
+                  </div>
+                ) : null}
+              </div>
+            </div>
           </div>
         </aside>
 

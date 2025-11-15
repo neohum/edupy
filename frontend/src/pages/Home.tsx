@@ -54,10 +54,10 @@ export default function Home() {
               <h4>파이썬 학습</h4>
               <p>기초부터 고급까지 단계별 학습</p>
               <ul className="feature-list">
-                <li>인터랙티브 코드 에디터</li>
-                <li>실시간 코드 실행</li>
-                <li>퀴즈 및 연습 문제</li>
-                <li>코드 저장 기능</li>
+                <li>Monaco 코드 에디터</li>
+                <li>Pyodide 실시간 실행</li>
+                <li>50개 단계별 활동</li>
+                <li>진행도 자동 저장</li>
               </ul>
               <Link to="/python" className="btn btn-primary">시작하기</Link>
             </div>
