@@ -325,8 +325,12 @@ export default function PythonLearning() {
     setOutput('');
     setWaitingForInput(false);
 
-    // turtle 코드인지 확인
-    const isTurtleCode = code.includes('import turtle') || code.includes('from turtle');
+    // turtle 코드인지 확인 (오타 포함)
+    const isTurtleCode =
+      code.includes('import turtle') ||
+      code.includes('from turtle') ||
+      code.includes('mport turtle') ||  // 오타 감지
+      /turtle\s*\.\s*(forward|backward|right|left|circle|penup|pendown|goto|shape|title|done)/i.test(code);
 
     if (isTurtleCode) {
       try {

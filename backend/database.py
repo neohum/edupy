@@ -51,22 +51,98 @@ def init_database():
     
     logger.info("Database initialized successfully")
 
-def save_error_report(level: str, activity: str, error_message: str, user_code: str, timestamp: str) -> int:
-    """오류 보고 저장"""
+def check_duplicate_error(level: str, activity: str, error_message: str) -> Optional[Dict]:
+    """
+    중복 오류 체크
+
+    Args:
+        level: 레벨 정보
+        activity: 활동 정보
+        error_message: 오류 메시지
+
+    Returns:
+        중복된 오류가 있으면 해당 오류 정보 반환, 없으면 None
+    """
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    cursor.execute("""
-        INSERT INTO error_reports (level, activity, error_message, user_code, timestamp)
-        VALUES (?, ?, ?, ?, ?)
-    """, (level, activity, error_message, user_code, timestamp))
-    
-    error_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-    
-    logger.info(f"Error report saved with ID: {error_id}")
-    return error_id
+
+    try:
+        cursor.execute("""
+            SELECT id, level, activity, error_message, user_code, timestamp, resolved, created_at
+            FROM error_reports
+            WHERE level = ? AND activity = ? AND error_message = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        """, (level, activity, error_message))
+
+        row = cursor.fetchone()
+
+        if row:
+            return {
+                'id': row['id'],
+                'level': row['level'],
+                'activity': row['activity'],
+                'error_message': row['error_message'],
+                'user_code': row['user_code'],
+                'timestamp': row['timestamp'],
+                'resolved': bool(row['resolved']),
+                'created_at': row['created_at']
+            }
+        return None
+    finally:
+        conn.close()
+
+
+def save_error_report(level: str, activity: str, error_message: str, user_code: str, timestamp: str) -> Dict:
+    """
+    오류 보고 저장 (중복 체크 포함)
+
+    Returns:
+        dict: {
+            'success': bool,
+            'error_id': int (새로 저장된 경우),
+            'duplicate': bool,
+            'existing_error': dict (중복인 경우)
+        }
+    """
+    # 중복 체크
+    existing_error = check_duplicate_error(level, activity, error_message)
+
+    if existing_error:
+        logger.info(f"Duplicate error found: ID {existing_error['id']}")
+        return {
+            'success': False,
+            'duplicate': True,
+            'existing_error': existing_error,
+            'message': '이미 접수된 오류입니다.'
+        }
+
+    # 중복이 아니면 새로 저장
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO error_reports (level, activity, error_message, user_code, timestamp)
+            VALUES (?, ?, ?, ?, ?)
+        """, (level, activity, error_message, user_code, timestamp))
+
+        error_id = cursor.lastrowid
+        conn.commit()
+
+        logger.info(f"New error report saved with ID: {error_id}")
+        return {
+            'success': True,
+            'duplicate': False,
+            'error_id': error_id,
+            'message': '오류가 성공적으로 접수되었습니다.'
+        }
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error saving error report: {e}")
+        raise
+    finally:
+        conn.close()
 
 def get_error_reports(limit: int = 100, offset: int = 0, filter_status: str = 'all') -> List[Dict]:
     """오류 보고 목록 조회 (SQL Injection 방지)"""
