@@ -109,17 +109,19 @@ builtins.print = custom_print
  * 사용자 코드를 처리하여 async/await 추가
  */
 export function processUserCode(code: string): string {
-  return code
-    // int(input(...)) -> int(await input(...))
-    .replace(/int\s*\(\s*input\s*\(/g, 'int(await input(')
-    // float(input(...)) -> float(await input(...))
-    .replace(/float\s*\(\s*input\s*\(/g, 'float(await input(')
-    // str(input(...)) -> str(await input(...))
-    .replace(/str\s*\(\s*input\s*\(/g, 'str(await input(')
-    // 변수 = input(...) -> 변수 = await input(...)
-    .replace(/=\s*input\s*\(/g, '= await input(')
-    // print(input(...)) -> print(await input(...))
-    .replace(/print\s*\(\s*input\s*\(/g, 'print(await input(');
+  let processedCode = code;
+
+  // 모든 input( 호출을 찾아서 await 추가
+  // 1. 먼저 이미 await가 있는 경우를 표시
+  processedCode = processedCode.replace(/await\s+input\s*\(/g, '___AWAIT_INPUT___(');
+
+  // 2. 남은 모든 input(을 await input(으로 변경
+  processedCode = processedCode.replace(/input\s*\(/g, 'await input(');
+
+  // 3. 표시한 부분을 원래대로 복원
+  processedCode = processedCode.replace(/___AWAIT_INPUT___\(/g, 'await input(');
+
+  return processedCode;
 }
 
 /**
@@ -128,7 +130,7 @@ export function processUserCode(code: string): string {
 export function wrapUserCode(code: string): string {
   const processedCode = processUserCode(code);
 
-  return `
+  const wrappedCode = `
 async def __user_code__():
     # input 함수를 async로 정의
     async def input(prompt=""):
@@ -141,5 +143,7 @@ ${processedCode.split('\n').map(line => '    ' + line).join('\n')}
 # 실행
 await __user_code__()
   `;
+
+  return wrappedCode;
 }
 
