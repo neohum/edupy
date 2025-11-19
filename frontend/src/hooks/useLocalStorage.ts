@@ -32,11 +32,14 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T)
 
 /**
  * 진행 상황 관리 훅
+ * @param type - 'python' 또는 'pygame'
  */
-export function useProgress() {
+export function useProgress(type: 'python' | 'pygame' = 'python') {
+  const storageKey = `edupy_${type}_progress`;
+
   const getInitialProgress = () => {
     try {
-      const saved = localStorage.getItem('edupy_python_progress');
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         const { levelIndex, activityIndex } = JSON.parse(saved);
         return {
@@ -50,7 +53,7 @@ export function useProgress() {
     return { levelIndex: 0, activityIndex: 0 };
   };
 
-  const [progress, setProgress] = useLocalStorage('edupy_python_progress', getInitialProgress());
+  const [progress, setProgress] = useLocalStorage(storageKey, getInitialProgress());
 
   const updateProgress = useCallback((levelIndex: number, activityIndex: number) => {
     setProgress({ levelIndex, activityIndex });
@@ -65,11 +68,14 @@ export function useProgress() {
 
 /**
  * 완료된 활동 관리 훅
+ * @param type - 'python' 또는 'pygame'
  */
-export function useCompletedActivities() {
+export function useCompletedActivities(type: 'python' | 'pygame' = 'python') {
+  const storageKey = `edupy_${type}_completed`;
+
   const getInitialCompleted = () => {
     try {
-      const saved = localStorage.getItem('edupy_python_completed');
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         return new Set<string>(JSON.parse(saved));
       }
@@ -84,11 +90,11 @@ export function useCompletedActivities() {
   // Set을 배열로 변환하여 저장
   useEffect(() => {
     try {
-      localStorage.setItem('edupy_python_completed', JSON.stringify(Array.from(completedActivities)));
+      localStorage.setItem(storageKey, JSON.stringify(Array.from(completedActivities)));
     } catch (error) {
       console.error('완료 목록 저장 실패:', error);
     }
-  }, [completedActivities]);
+  }, [completedActivities, storageKey]);
 
   const markAsCompleted = useCallback((activityId: string) => {
     setCompletedActivities(prev => {
@@ -101,8 +107,8 @@ export function useCompletedActivities() {
 
   const resetCompleted = useCallback(() => {
     setCompletedActivities(new Set<string>());
-    localStorage.removeItem('edupy_python_completed');
-  }, []);
+    localStorage.removeItem(storageKey);
+  }, [storageKey]);
 
   return { completedActivities, markAsCompleted, resetCompleted };
 }

@@ -35,6 +35,9 @@ export default function PythonLearning() {
   const [searchResults, setSearchResults] = useState<Array<{title: string, url: string, description: string}>>([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  // 툴팁 상태
+  const [activeTooltip, setActiveTooltip] = useState<number | null>(null);
+
   // 가이드 투어 상태
   const [runTour, setRunTour] = useState(false);
   const [tourCompleted, setTourCompleted] = useState(false);
@@ -439,11 +442,26 @@ export default function PythonLearning() {
         setIsRunning(false);
         return;
       } catch (error: any) {
-        setOutput(`❌ Turtle 실행 오류:\n${error.message || String(error)}`);
-        setErrorInfo({
-          message: error.message || String(error),
-          code: code,
-        });
+        const errorMsg = error.message || String(error);
+        setOutput(`❌ Turtle 실행 오류:\n${errorMsg}`);
+
+        // 단순한 문법 오류는 오류 보고 대상에서 제외
+        const isSyntaxError = errorMsg.includes('SyntaxError') ||
+                             errorMsg.includes('IndentationError') ||
+                             errorMsg.includes('TabError') ||
+                             errorMsg.includes('unexpected EOF') ||
+                             errorMsg.includes('invalid syntax') ||
+                             errorMsg.includes('unindent does not match');
+
+        if (!isSyntaxError) {
+          setErrorInfo({
+            message: errorMsg,
+            code: code,
+          });
+        } else {
+          setErrorInfo(null);
+        }
+
         setIsRunning(false);
         return;
       }
@@ -508,11 +526,22 @@ export default function PythonLearning() {
 
       setOutput((prev) => (prev ? prev + '\n\n' : '') + `❌ 오류:\n${errorMsg}`);
 
-      // 오류 정보 저장
-      setErrorInfo({
-        message: errorMsg,
-        code: code,
-      });
+      // 단순한 문법 오류는 오류 보고 대상에서 제외
+      const isSyntaxError = errorMsg.includes('SyntaxError') ||
+                           errorMsg.includes('IndentationError') ||
+                           errorMsg.includes('TabError') ||
+                           errorMsg.includes('unexpected EOF') ||
+                           errorMsg.includes('invalid syntax') ||
+                           errorMsg.includes('unindent does not match');
+
+      if (!isSyntaxError) {
+        setErrorInfo({
+          message: errorMsg,
+          code: code,
+        });
+      } else {
+        setErrorInfo(null);
+      }
 
       setIsRunning(false);
     }
@@ -697,6 +726,39 @@ export default function PythonLearning() {
               <span className="nav-emoji">➡️</span>
             </button>
           </div>
+
+          <div className="header-right-section">
+            {/* 학습 메뉴 드롭다운 */}
+            <div className="dropdown">
+              <button className="nav-link dropdown-toggle">
+                🐍 학습 메뉴 ▼
+              </button>
+              <div className="dropdown-menu">
+                <a href="https://tt.hancomtaja.com/ko" target="_blank" rel="noopener noreferrer" className="dropdown-item">
+                  ⌨️ 한컴 타자 연습
+                </a>
+                <a href="/python" className="dropdown-item">
+                  🐍 파이썬 학습
+                </a>
+                <a href="/pygame" className="dropdown-item">
+                  📚 파이게임 기초 문법
+                </a>
+                <a href="/pygame-games" className="dropdown-item">
+                  🎮 파이게임 만들기
+                </a>
+                <div className="dropdown-item disabled">
+                  📊 데이터 분석과 시각화 <span className="badge-coming-soon">준비중</span>
+                </div>
+                <div className="dropdown-item disabled">
+                  🤖 AI 코딩 <span className="badge-coming-soon">준비중</span>
+                </div>
+              </div>
+            </div>
+
+            <a href="/admin/login" className="admin-login-link" title="관리자 로그인">
+              🔐
+            </a>
+          </div>
         </div>
       </header>
 
@@ -733,16 +795,77 @@ export default function PythonLearning() {
 
             <div className="concepts">
               <strong>핵심 개념:</strong>
-              {currentLevel.concepts.map((concept, index) => (
-                <span
-                  key={index}
-                  className="concept-tag"
-                  title={conceptExplanations[concept] || concept}
-                  data-tooltip={conceptExplanations[concept] || concept}
-                >
-                  {concept}
-                </span>
-              ))}
+              {currentLevel.concepts.map((concept, index) => {
+                // 툴팁 위치 계산 (화면 밖으로 나가지 않도록)
+                const getTooltipStyle = () => {
+                  const baseStyle: React.CSSProperties = {
+                    position: 'fixed',
+                    bottom: 'auto',
+                    top: 'auto',
+                    left: 'auto',
+                    right: 'auto',
+                    marginBottom: '8px',
+                    padding: '10px 14px',
+                    background: '#2d3748',
+                    color: 'white',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    whiteSpace: 'normal',
+                    width: '600px',
+                    maxWidth: '90vw',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    zIndex: 10000,
+                    animation: 'fadeIn 0.2s ease-in-out',
+                    lineHeight: '1.5'
+                  };
+
+                  // 화면 중앙에 배치
+                  baseStyle.left = '50%';
+                  baseStyle.top = '50%';
+                  baseStyle.transform = 'translate(-50%, -50%)';
+
+                  return baseStyle;
+                };
+
+                return (
+                  <span
+                    key={index}
+                    className="concept-tag"
+                    onMouseEnter={() => setActiveTooltip(index)}
+                    onMouseLeave={() => setActiveTooltip(null)}
+                    style={{
+                      position: 'relative',
+                      cursor: 'help'
+                    }}
+                  >
+                    {concept}
+                    {activeTooltip === index && (
+                      <>
+                        {/* 반투명 배경 오버레이 */}
+                        <div
+                          style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(0, 0, 0, 0.5)',
+                            zIndex: 9999
+                          }}
+                          onClick={() => setActiveTooltip(null)}
+                        />
+                        {/* 툴팁 */}
+                        <span
+                          className="concept-tooltip"
+                          style={getTooltipStyle()}
+                        >
+                          {conceptExplanations[concept] || concept}
+                        </span>
+                      </>
+                    )}
+                  </span>
+                );
+              })}
             </div>
           </div>
 
@@ -882,8 +1005,68 @@ export default function PythonLearning() {
         <main className="right-panel">
           {/* Code Editor */}
           <div className="code-editor-section">
-            <div className="editor-header">
-              <span>💻 코드 에디터 (예제를 보고 따라 쳐보세요)</span>
+            <div className="editor-header" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '0.75rem 1rem',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              fontWeight: '600',
+              borderTopLeftRadius: '8px',
+              borderTopRightRadius: '8px'
+            }}>
+              <span style={{ fontSize: '1rem' }}>💻 코드 에디터 (예제를 보고 따라 쳐보세요)</span>
+              <button
+                className="run-button"
+                onClick={handleRunCode}
+                disabled={isRunning || !code.trim()}
+                style={{
+                  padding: '0.6rem 1.5rem',
+                  background: isRunning || !code.trim()
+                    ? 'rgba(255, 255, 255, 0.3)'
+                    : 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
+                  color: 'white',
+                  border: '2px solid rgba(255, 255, 255, 0.9)',
+                  borderRadius: '8px',
+                  fontSize: '0.95rem',
+                  fontWeight: '700',
+                  cursor: isRunning || !code.trim() ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  minWidth: '120px',
+                  justifyContent: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isRunning && code.trim()) {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(72, 187, 120, 0.5)';
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #38a169 0%, #2f855a 100%)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+                  if (!isRunning && code.trim()) {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)';
+                  }
+                }}
+              >
+                {isRunning ? (
+                  <>
+                    <span className="spinner"></span>
+                    실행 중...
+                  </>
+                ) : (
+                  <>
+                    <span>▶️</span>
+                    실행하기
+                  </>
+                )}
+              </button>
             </div>
             <div className="monaco-editor-wrapper">
               <Editor
@@ -906,34 +1089,25 @@ export default function PythonLearning() {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="action-buttons">
-            <button
-              className="run-button"
-              onClick={handleRunCode}
-              disabled={isRunning || !code.trim()}
-            >
-              {isRunning ? (
-                <>
-                  <span className="spinner"></span>
-                  실행 중...
-                </>
-              ) : (
-                '▶️ 실행하기'
-              )}
-            </button>
-
-            {/* 오류 보고 버튼 */}
-            <ErrorReportButton
-              errorInfo={errorInfo}
-              level={`Level ${currentLevel.level}: ${currentLevel.title}`}
-              activity={`${currentActivity.id} - ${currentActivity.title}`}
-            />
-          </div>
-
           {/* Output Area */}
           <div className="output-section">
-            <div className="output-header">실행 결과</div>
+            <div className="output-header" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '0.5rem',
+              flexWrap: 'nowrap',
+              overflow: 'hidden'
+            }}>
+              <span style={{ flexShrink: 0 }}>📤 실행 결과</span>
+              {errorInfo && (
+                <ErrorReportButton
+                  errorInfo={errorInfo}
+                  level={`Level ${currentLevel.level}: ${currentLevel.title}`}
+                  activity={`${currentActivity.id} - ${currentActivity.title}`}
+                />
+              )}
+            </div>
             <div className="output-content">
               {output ? (
                 output.includes('<img') ? (

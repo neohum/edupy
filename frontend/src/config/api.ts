@@ -13,6 +13,9 @@ export const API_ENDPOINTS = {
   // Turtle
   turtleExecute: `${API_BASE_URL}/api/turtle/execute`,
 
+  // Pygame
+  pygameExecute: `${API_BASE_URL}/api/pygame/execute`,
+
   // 오류 보고
   sendErrorReport: `${API_BASE_URL}/api/error-report`,
 

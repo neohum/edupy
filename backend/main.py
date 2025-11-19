@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import resend
@@ -8,9 +9,23 @@ import logging
 import sys
 from io import StringIO
 import requests
-from typing import List, Dict
+from typing import List, Dict, Optional
+from datetime import datetime, timedelta
+from jose import JWTError, jwt
+import bcrypt
+import pyotp
+import qrcode
+from io import BytesIO
+import base64
 from turtle_runner import run_turtle_code
-from database import init_database, save_error_report, get_error_reports, get_error_statistics, get_error_by_id, toggle_error_resolved
+from pygame_runner import run_pygame_code
+from auto_fix import fix_code_with_augment
+from database import (
+    init_database, save_error_report, get_error_reports, get_error_statistics,
+    get_error_by_id, toggle_error_resolved, save_fixed_code, get_admin_user,
+    update_admin_totp, update_admin_last_login, check_duplicate_error_by_page,
+    save_new_error_report
+)
 
 # .env 파일 로드
 load_dotenv()
@@ -19,6 +34,14 @@ load_dotenv()
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 DEBUG = os.getenv("DEBUG", "true").lower() == "true"
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+
+# 관리자 인증 설정
+JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-this-in-production")
+JWT_ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8시간
+
+# HTTP Bearer 인증
+security = HTTPBearer()
 
 # 로깅 설정
 logging.basicConfig(
@@ -67,6 +90,192 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
+# ==================== 인증 관련 함수 ====================
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """JWT 액세스 토큰 생성"""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return encoded_jwt
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """JWT 토큰 검증"""
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+        return username
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+
+# ==================== 인증 API ====================
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+    totp_code: Optional[str] = None
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str
+    username: str
+    requires_2fa: bool = False
+    totp_enabled: bool = False
+
+class Setup2FAResponse(BaseModel):
+    qr_code: str
+    secret: str
+    username: str
+
+class Verify2FARequest(BaseModel):
+    username: str
+    totp_code: str
+
+@app.post("/api/admin/login")
+async def admin_login(request: LoginRequest, req: Request):
+    """관리자 로그인 (2FA 지원)"""
+    # 데이터베이스에서 사용자 조회
+    user = get_admin_user(request.username)
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+
+    # 비밀번호 검증 (bcrypt 직접 사용)
+    password_bytes = request.password.encode('utf-8')
+    stored_hash = user['password_hash'].encode('utf-8')
+    if not bcrypt.checkpw(password_bytes, stored_hash):
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+
+    # 2FA 활성화 여부 확인
+    if user['totp_enabled']:
+        # 2FA 코드가 제공되지 않은 경우
+        if not request.totp_code:
+            return {
+                "access_token": "",
+                "token_type": "bearer",
+                "username": request.username,
+                "requires_2fa": True,
+                "totp_enabled": True
+            }
+
+        # 2FA 코드 검증
+        totp = pyotp.TOTP(user['totp_secret'])
+        if not totp.verify(request.totp_code, valid_window=1):
+            raise HTTPException(status_code=401, detail="Invalid 2FA code")
+
+    # 로그인 성공 - 토큰 생성
+    access_token = create_access_token(data={"sub": request.username})
+    update_admin_last_login(request.username)
+    logger.info(f"Admin login successful from {req.client.host}: {request.username}")
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "username": request.username,
+        "requires_2fa": False,
+        "totp_enabled": user['totp_enabled']
+    }
+
+@app.get("/api/admin/verify")
+async def verify_admin(username: str = Depends(verify_token)):
+    """관리자 토큰 검증"""
+    user = get_admin_user(username)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    return {
+        "valid": True,
+        "username": username,
+        "totp_enabled": bool(user['totp_enabled'])
+    }
+
+@app.post("/api/admin/setup-2fa", response_model=Setup2FAResponse)
+async def setup_2fa(username: str = Depends(verify_token)):
+    """2FA 설정 (QR 코드 생성)"""
+    user = get_admin_user(username)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # TOTP 시크릿 생성
+    secret = pyotp.random_base32()
+
+    # TOTP URI 생성
+    totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(
+        name=username,
+        issuer_name="EduPy Admin"
+    )
+
+    # QR 코드 생성
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(totp_uri)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    # 이미지를 base64로 인코딩
+    buffer = BytesIO()
+    img.save(buffer, format='PNG')
+    img_str = base64.b64encode(buffer.getvalue()).decode()
+
+    # 데이터베이스에 시크릿 저장 (아직 활성화하지 않음)
+    update_admin_totp(username, secret, enabled=False)
+
+    return {
+        "qr_code": f"data:image/png;base64,{img_str}",
+        "secret": secret,
+        "username": username
+    }
+
+@app.post("/api/admin/enable-2fa")
+async def enable_2fa(request: Verify2FARequest, username: str = Depends(verify_token)):
+    """2FA 활성화 (코드 검증 후)"""
+    if request.username != username:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    user = get_admin_user(username)
+    if not user or not user['totp_secret']:
+        raise HTTPException(status_code=400, detail="2FA not set up")
+
+    # TOTP 코드 검증
+    totp = pyotp.TOTP(user['totp_secret'])
+    if not totp.verify(request.totp_code, valid_window=1):
+        raise HTTPException(status_code=401, detail="Invalid 2FA code")
+
+    # 2FA 활성화
+    update_admin_totp(username, user['totp_secret'], enabled=True)
+    logger.info(f"2FA enabled for user: {username}")
+
+    return {"success": True, "message": "2FA enabled successfully"}
+
+@app.post("/api/admin/disable-2fa")
+async def disable_2fa(request: Verify2FARequest, username: str = Depends(verify_token)):
+    """2FA 비활성화"""
+    if request.username != username:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    user = get_admin_user(username)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # TOTP 코드 검증 (활성화된 경우)
+    if user['totp_enabled'] and user['totp_secret']:
+        totp = pyotp.TOTP(user['totp_secret'])
+        if not totp.verify(request.totp_code, valid_window=1):
+            raise HTTPException(status_code=401, detail="Invalid 2FA code")
+
+    # 2FA 비활성화
+    update_admin_totp(username, "", enabled=False)
+    logger.info(f"2FA disabled for user: {username}")
+
+    return {"success": True, "message": "2FA disabled successfully"}
+
 # 타이핑 레슨 API (나중에 구현)
 @app.get("/api/typing/lessons")
 async def get_typing_lessons():
@@ -90,6 +299,20 @@ class ErrorReport(BaseModel):
     error_message: str
     user_code: str
     timestamp: str
+
+# 오류 중복 확인 요청 모델
+class ErrorCheckRequest(BaseModel):
+    page: str
+    code: str
+    output: str
+
+# 새로운 오류 보고 요청 모델 (파이게임 만들기용)
+class NewErrorReport(BaseModel):
+    page: str
+    error_type: str
+    description: str
+    code: str
+    output: str
 
 # Turtle 코드 실행 요청 모델
 class TurtleCodeRequest(BaseModel):
@@ -137,16 +360,83 @@ async def execute_turtle_code(request: TurtleCodeRequest):
             detail=f"Turtle 코드 실행 실패: {str(e)}"
         )
 
+# Pygame 코드 실행 요청 모델
+class PygameCodeRequest(BaseModel):
+    code: str
+    width: int = 600
+    height: int = 400
+    max_frames: int = 60
+    simulate_input: bool = True  # 키 입력 시뮬레이션 활성화
+    game_type: str = 'auto'  # 게임 타입 ('auto', 'avoid', 'collect', 'shoot', 'pong', 'typing')
+
+# Pygame 코드 실행 API
+@app.post("/api/pygame/execute")
+async def execute_pygame_code(request: PygameCodeRequest):
+    """
+    Pygame 코드를 실행하고 결과 이미지를 반환
+    키 입력 시뮬레이션을 통해 게임이 자동으로 플레이되는 것처럼 보이게 합니다.
+    """
+    logger.info(f"Received pygame code execution request (max_frames={request.max_frames}, simulate_input={request.simulate_input}, game_type={request.game_type})")
+
+    try:
+        result = run_pygame_code(
+            request.code,
+            request.width,
+            request.height,
+            request.max_frames,
+            request.simulate_input,
+            request.game_type
+        )
+
+        if result['success']:
+            logger.info("Pygame code executed successfully")
+            return {
+                "success": True,
+                "image": result['image'],
+                "output": result['output']
+            }
+        else:
+            logger.error(f"Pygame code execution failed: {result['error']}")
+            return {
+                "success": False,
+                "error": result['error'],
+                "output": result['output']
+            }
+
+    except Exception as e:
+        logger.error(f"Unexpected error in pygame execution: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Pygame 코드 실행 실패: {str(e)}"
+        )
+
 # 오류 보고 API
 @app.post("/api/error-report")
 async def send_error_report(report: ErrorReport):
     """
     사용자가 발생시킨 오류를 이메일로 전송하고 DB에 저장 (중복 체크 포함)
+    AI 자동 수정 기능 추가
     """
     logger.info(f"Received error report for {report.level} - {report.activity}")
 
     try:
-        # 1. DB에 오류 저장 (중복 체크 포함)
+        # 1. AI 자동 수정 시도
+        ai_fix_success = False
+        fixed_code = None
+        fix_explanation = None
+
+        try:
+            success, code, explanation = fix_code_with_augment(report.user_code, report.error_message)
+            if success:
+                ai_fix_success = True
+                fixed_code = code
+                fix_explanation = explanation
+                logger.info(f"AI successfully fixed the code for {report.level} - {report.activity}")
+        except Exception as ai_error:
+            logger.warning(f"AI fix failed: {str(ai_error)}")
+            # AI 수정 실패해도 계속 진행
+
+        # 2. DB에 오류 저장 (중복 체크 포함)
         save_result = save_error_report(
             level=report.level,
             activity=report.activity,
@@ -162,7 +452,10 @@ async def send_error_report(report: ErrorReport):
                 "success": False,
                 "duplicate": True,
                 "message": save_result['message'],
-                "existing_error": save_result['existing_error']
+                "existing_error": save_result['existing_error'],
+                "ai_fixed": ai_fix_success,
+                "fixed_code": fixed_code,
+                "fix_explanation": fix_explanation
             }
 
         error_id = save_result['error_id']
@@ -248,6 +541,74 @@ async def send_error_report(report: ErrorReport):
         raise HTTPException(
             status_code=500,
             detail=f"오류 보고 처리 실패: {str(e)}"
+        )
+
+# 오류 중복 확인 API (파이게임 만들기용)
+@app.post("/api/errors/check-duplicate")
+async def check_duplicate_error(request: ErrorCheckRequest):
+    """
+    동일한 오류가 이미 보고되었는지 확인
+    """
+    logger.info(f"Checking duplicate error for page: {request.page}")
+
+    try:
+        # 페이지와 출력 내용으로 중복 확인
+        # output에서 오류 메시지 추출 (첫 번째 줄)
+        error_message = request.output.split('\n')[0] if request.output else ''
+
+        # 기존 중복 확인 함수 사용 (level과 activity를 page로 통합)
+        existing_error = check_duplicate_error_by_page(request.page, error_message)
+
+        if existing_error:
+            return {
+                "exists": True,
+                "error_id": existing_error['id'],
+                "created_at": existing_error['created_at'],
+                "resolved": existing_error['resolved']
+            }
+        else:
+            return {
+                "exists": False
+            }
+
+    except Exception as e:
+        logger.error(f"Failed to check duplicate error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"중복 확인 실패: {str(e)}"
+        )
+
+# 새로운 오류 보고 API (파이게임 만들기용)
+@app.post("/api/errors/report")
+async def report_new_error(report: NewErrorReport):
+    """
+    새로운 오류 보고 (파이게임 만들기용)
+    """
+    logger.info(f"Received new error report for {report.page}")
+
+    try:
+        # DB에 저장
+        error_id = save_new_error_report(
+            page=report.page,
+            error_type=report.error_type,
+            description=report.description,
+            code=report.code,
+            output=report.output
+        )
+
+        logger.info(f"New error saved with ID: {error_id}")
+
+        return {
+            "success": True,
+            "error_id": error_id,
+            "message": "오류가 성공적으로 보고되었습니다."
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to save error report: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"오류 보고 저장 실패: {str(e)}"
         )
 
 # 오류 통계 조회 API
@@ -552,6 +913,311 @@ async def search_web(request: SearchRequest):
             "error": f"검색 중 오류가 발생했습니다: {str(e)}",
             "results": []
         }
+
+# ==================== 오류 관리 API (관리자용) ====================
+
+@app.get("/api/errors")
+async def get_errors(
+    limit: int = 100,
+    offset: int = 0,
+    filter_status: str = 'all',
+    username: str = Depends(verify_token)
+):
+    """
+    오류 목록 조회 (관리자 전용)
+
+    Args:
+        limit: 조회할 오류 개수 (기본값: 100)
+        offset: 시작 위치 (기본값: 0)
+        filter_status: 필터 상태 ('all', 'resolved', 'unresolved')
+    """
+    try:
+        errors = get_error_reports(limit=limit, offset=offset, filter_status=filter_status)
+
+        # 데이터베이스 필드명을 프론트엔드 필드명으로 변환
+        formatted_errors = []
+        for error in errors:
+            formatted_errors.append({
+                'id': error['id'],
+                'level': error['level'],
+                'activity': error['activity'],
+                'error_type': 'Python Error',  # 기본값
+                'error_message': error['error_message'],
+                'code': error['user_code'],
+                'user_agent': 'N/A',  # 데이터베이스에 없는 필드
+                'created_at': error['created_at'],
+                'resolved': bool(error['resolved']),
+                'resolved_at': error.get('resolved_at')
+            })
+
+        logger.info(f"Retrieved {len(formatted_errors)} errors for admin: {username}")
+        return {
+            "success": True,
+            "errors": formatted_errors,
+            "total": len(formatted_errors)
+        }
+    except Exception as e:
+        logger.error(f"Failed to get errors: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve errors: {str(e)}")
+
+@app.get("/api/errors/statistics")
+async def get_errors_statistics(username: str = Depends(verify_token)):
+    """
+    오류 통계 조회 (관리자 전용)
+    """
+    try:
+        stats = get_error_statistics()
+        logger.info(f"Retrieved error statistics for admin: {username}")
+        return stats
+    except Exception as e:
+        logger.error(f"Failed to get error statistics: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve statistics: {str(e)}")
+
+@app.get("/api/errors/{error_id}")
+async def get_error_detail(error_id: int, username: str = Depends(verify_token)):
+    """
+    특정 오류 상세 조회 (관리자 전용)
+    """
+    try:
+        error = get_error_by_id(error_id)
+        if not error:
+            raise HTTPException(status_code=404, detail="Error not found")
+
+        # 데이터베이스 필드명을 프론트엔드 필드명으로 변환
+        formatted_error = {
+            'id': error['id'],
+            'level': error['level'],
+            'activity': error['activity'],
+            'error_type': 'Python Error',
+            'error_message': error['error_message'],
+            'code': error['user_code'],
+            'user_agent': 'N/A',
+            'created_at': error['created_at'],
+            'resolved': bool(error['resolved']),
+            'resolved_at': error.get('resolved_at')
+        }
+
+        logger.info(f"Retrieved error {error_id} for admin: {username}")
+        return formatted_error
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get error {error_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve error: {str(e)}")
+
+@app.post("/api/errors/{error_id}/toggle")
+async def toggle_error_status(error_id: int, username: str = Depends(verify_token)):
+    """
+    오류 해결 상태 토글 (관리자 전용)
+    """
+    try:
+        success = toggle_error_resolved(error_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Error not found")
+
+        logger.info(f"Toggled error {error_id} status by admin: {username}")
+        return {"success": True, "message": "Error status toggled successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to toggle error {error_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to toggle error status: {str(e)}")
+
+class BatchTestRequest(BaseModel):
+    error_ids: List[int]
+    auto_fix: bool = False  # 자동 수정 시도 여부
+
+class AutoFixRequest(BaseModel):
+    error_id: int
+
+@app.post("/api/errors/{error_id}/auto-fix")
+async def auto_fix_error(
+    error_id: int,
+    username: str = Depends(verify_token)
+):
+    """
+    Augment API를 사용하여 오류를 자동으로 수정합니다 (관리자 전용)
+    """
+    try:
+        # 오류 정보 가져오기
+        error = get_error_by_id(error_id)
+        if not error:
+            raise HTTPException(status_code=404, detail="Error not found")
+
+        code = error.get('user_code', '')
+        error_message = error.get('error_message', '')
+
+        # Augment API로 코드 수정
+        success, fixed_code, explanation = fix_code_with_augment(code, error_message)
+
+        if not success:
+            return {
+                "success": False,
+                "error": explanation or "코드 수정에 실패했습니다."
+            }
+
+        # 수정된 코드 테스트
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
+
+        try:
+            exec(fixed_code, {})
+            output = sys.stdout.getvalue()
+
+            # 테스트 성공 - 해결됨으로 변경 및 수정된 코드 저장
+            toggle_error_resolved(error_id)
+            save_fixed_code(error_id, fixed_code, explanation or "AI 자동 수정")
+
+            logger.info(f"Auto-fixed error {error_id} by admin: {username}")
+
+            return {
+                "success": True,
+                "fixed_code": fixed_code,
+                "explanation": explanation,
+                "output": output,
+                "original_code": code
+            }
+
+        except Exception as test_error:
+            # 수정된 코드도 실패
+            return {
+                "success": False,
+                "error": f"수정된 코드 테스트 실패: {str(test_error)}",
+                "fixed_code": fixed_code,
+                "explanation": explanation
+            }
+        finally:
+            sys.stdout = old_stdout
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to auto-fix error {error_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to auto-fix error: {str(e)}")
+
+@app.post("/api/errors/batch-test")
+async def batch_test_errors(
+    request: BatchTestRequest,
+    username: str = Depends(verify_token)
+):
+    """
+    선택된 오류들을 일괄 테스트하고 성공한 오류는 자동으로 해결됨으로 변경
+    """
+    try:
+        results = []
+
+        for error_id in request.error_ids:
+            try:
+                # 오류 정보 가져오기
+                error = get_error_by_id(error_id)
+                if not error:
+                    results.append({
+                        "error_id": error_id,
+                        "success": False,
+                        "error": "Error not found"
+                    })
+                    continue
+
+                # 이미 해결된 오류는 스킵
+                if error.get('resolved'):
+                    results.append({
+                        "error_id": error_id,
+                        "success": False,
+                        "error": "Already resolved"
+                    })
+                    continue
+
+                # Python 코드 실행 테스트
+                code = error.get('user_code', '')
+
+                # StringIO를 사용하여 출력 캡처
+                old_stdout = sys.stdout
+                sys.stdout = StringIO()
+
+                try:
+                    # 코드 실행
+                    exec(code, {})
+                    output = sys.stdout.getvalue()
+
+                    # 성공 - 해결됨으로 변경
+                    toggle_error_resolved(error_id)
+
+                    results.append({
+                        "error_id": error_id,
+                        "success": True,
+                        "output": output
+                    })
+
+                except Exception as exec_error:
+                    # 실행 실패 - 자동 수정 시도
+                    error_msg = str(exec_error)
+
+                    if request.auto_fix:
+                        # Augment API로 자동 수정 시도
+                        success, fixed_code, explanation = fix_code_with_augment(code, error_msg)
+
+                        if success and fixed_code:
+                            # 수정된 코드 테스트
+                            try:
+                                exec(fixed_code, {})
+                                output = sys.stdout.getvalue()
+
+                                # 수정 성공 - 해결됨으로 변경
+                                toggle_error_resolved(error_id)
+
+                                results.append({
+                                    "error_id": error_id,
+                                    "success": True,
+                                    "auto_fixed": True,
+                                    "fixed_code": fixed_code,
+                                    "explanation": explanation,
+                                    "output": output
+                                })
+                            except Exception as fix_error:
+                                # 수정된 코드도 실패
+                                results.append({
+                                    "error_id": error_id,
+                                    "success": False,
+                                    "auto_fix_attempted": True,
+                                    "error": f"수정 후에도 실패: {str(fix_error)}"
+                                })
+                        else:
+                            # 자동 수정 실패
+                            results.append({
+                                "error_id": error_id,
+                                "success": False,
+                                "auto_fix_attempted": True,
+                                "error": error_msg
+                            })
+                    else:
+                        # 자동 수정 없이 실패 기록
+                        results.append({
+                            "error_id": error_id,
+                            "success": False,
+                            "error": error_msg
+                        })
+                finally:
+                    sys.stdout = old_stdout
+
+            except Exception as e:
+                results.append({
+                    "error_id": error_id,
+                    "success": False,
+                    "error": str(e)
+                })
+
+        logger.info(f"Batch tested {len(request.error_ids)} errors by admin: {username}")
+        return {
+            "success": True,
+            "results": results,
+            "total": len(request.error_ids),
+            "succeeded": len([r for r in results if r["success"]]),
+            "failed": len([r for r in results if not r["success"]])
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to batch test errors: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to batch test errors: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

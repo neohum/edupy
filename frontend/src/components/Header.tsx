@@ -8,7 +8,6 @@ interface HeaderProps {
 
 export default function Header({ title = '🐍 EduPy', showNav = true }: HeaderProps) {
   const location = useLocation();
-  const isErrorManagementPage = location.pathname === '/error-management';
   const isLearnPage = location.pathname === '/learn';
   const isHomePage = location.pathname === '/';
 
@@ -20,63 +19,37 @@ export default function Header({ title = '🐍 EduPy', showNav = true }: HeaderP
         </Link>
         {showNav && (
           <nav className="nav">
-            {isErrorManagementPage ? (
+            {isLearnPage ? (
               <>
-                <Link to="/#features" className="nav-link">기능</Link>
-                <Link to="/#about" className="nav-link">소개</Link>
-
-                {/* 파이썬 학습 드롭다운 */}
+                {/* 학습 메뉴 드롭다운 */}
                 <div className="dropdown">
                   <button className="nav-link dropdown-toggle">
-                    🐍 파이썬 학습 ▼
+                    🐍 학습 메뉴 ▼
                   </button>
                   <div className="dropdown-menu">
                     <a href="https://tt.hancomtaja.com/ko" target="_blank" rel="noopener noreferrer" className="dropdown-item">
                       ⌨️ 한컴 타자 연습
                     </a>
-                    <Link to="/learn" className="dropdown-item">
+                    <Link to="/python" className="dropdown-item">
                       🐍 파이썬 학습
                     </Link>
-                    <a href="https://pygame-zero.readthedocs.io/ko/latest/" target="_blank" rel="noopener noreferrer" className="dropdown-item">
-                      🎮 파이게임 기초 문법
-                    </a>
-                    <a href="https://pygame-zero.readthedocs.io/ko/latest/introduction.html" target="_blank" rel="noopener noreferrer" className="dropdown-item">
-                      🕹️ 파이게임 만들기
-                    </a>
+                    <Link to="/pygame" className="dropdown-item">
+                      📚 파이게임 기초 문법
+                    </Link>
+                    <div className="dropdown-item disabled">
+                      📊 데이터 분석과 시각화 <span className="badge-coming-soon">준비중</span>
+                    </div>
+                    <div className="dropdown-item disabled">
+                      🤖 AI 코딩 <span className="badge-coming-soon">준비중</span>
+                    </div>
+                    <Link to="/pygame-games" className="dropdown-item">
+                      🎮 파이게임 만들기
+                    </Link>
                   </div>
                 </div>
 
-                <Link to="/" className="nav-link">
-                  🏠 홈으로
-                </Link>
-              </>
-            ) : isLearnPage ? (
-              <>
-              
-
-                {/* 파이썬 학습 드롭다운 */}
-                <div className="dropdown">
-                  <button className="nav-link dropdown-toggle">
-                    🐍 파이썬 학습 ▼
-                  </button>
-                  <div className="dropdown-menu">
-                    <a href="https://tt.hancomtaja.com/ko" target="_blank" rel="noopener noreferrer" className="dropdown-item">
-                      ⌨️ 한컴 타자 연습
-                    </a>
-                    <Link to="/learn" className="dropdown-item">
-                      🐍 파이썬 학습
-                    </Link>
-                    <a href="https://pygame-zero.readthedocs.io/ko/latest/" target="_blank" rel="noopener noreferrer" className="dropdown-item">
-                      🎮 파이게임 기초 문법
-                    </a>
-                    <a href="https://pygame-zero.readthedocs.io/ko/latest/introduction.html" target="_blank" rel="noopener noreferrer" className="dropdown-item">
-                      🕹️ 파이게임 만들기
-                    </a>
-                  </div>
-                </div>
-
-                <Link to="/error-management" className="nav-link">
-                  🐛 오류 관리
+                <Link to="/admin/login" className="nav-link">
+                  🔐 관리자
                 </Link>
 
                 <Link to="/" className="nav-link">
@@ -97,29 +70,35 @@ export default function Header({ title = '🐍 EduPy', showNav = true }: HeaderP
                   </>
                 )}
 
-                {/* 파이썬 학습 드롭다운 */}
+                {/* 학습 메뉴 드롭다운 */}
                 <div className="dropdown">
                   <button className="nav-link dropdown-toggle">
-                    🐍 파이썬 학습 ▼
+                    🐍 학습 메뉴 ▼
                   </button>
                   <div className="dropdown-menu">
                     <a href="https://tt.hancomtaja.com/ko" target="_blank" rel="noopener noreferrer" className="dropdown-item">
                       ⌨️ 한컴 타자 연습
                     </a>
-                    <Link to="/learn" className="dropdown-item">
+                    <Link to="/python" className="dropdown-item">
                       🐍 파이썬 학습
                     </Link>
-                    <a href="https://pygame-zero.readthedocs.io/ko/latest/" target="_blank" rel="noopener noreferrer" className="dropdown-item">
-                      🎮 파이게임 기초 문법
-                    </a>
-                    <a href="https://pygame-zero.readthedocs.io/ko/latest/introduction.html" target="_blank" rel="noopener noreferrer" className="dropdown-item">
-                      🕹️ 파이게임 만들기
-                    </a>
+                    <Link to="/pygame" className="dropdown-item">
+                      📚 파이게임 기초 문법
+                    </Link>
+                    <div className="dropdown-item disabled">
+                      📊 데이터 분석과 시각화 <span className="badge-coming-soon">준비중</span>
+                    </div>
+                    <div className="dropdown-item disabled">
+                      🤖 AI 코딩 <span className="badge-coming-soon">준비중</span>
+                    </div>
+                    <Link to="/pygame-games" className="dropdown-item">
+                      🎮 파이게임 만들기
+                    </Link>
                   </div>
                 </div>
 
-                <Link to="/error-management" className="nav-link">
-                  🐛 오류 관리
+                <Link to="/admin/login" className="nav-link">
+                  🔐 관리자
                 </Link>
 
                 {!isHomePage && (

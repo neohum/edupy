@@ -54,7 +54,11 @@ echo "📦 환경 확인 중..."
 echo ""
 
 # Python 확인
-if ! command -v python &> /dev/null; then
+if command -v python3 &> /dev/null; then
+    PYTHON_CMD="python3"
+elif command -v python &> /dev/null; then
+    PYTHON_CMD="python"
+else
     echo "❌ Python이 설치되지 않았습니다."
     exit 1
 fi
@@ -65,17 +69,17 @@ if ! command -v node &> /dev/null; then
     exit 1
 fi
 
-echo "✅ Python: $(python --version)"
+echo "✅ Python: $($PYTHON_CMD --version)"
 echo "✅ Node.js: $(node --version)"
 echo ""
 
 # 백엔드 의존성 확인
 echo "🔍 백엔드 의존성 확인 중..."
 cd backend
-python -c "import fastapi, uvicorn, resend" 2>/dev/null
+$PYTHON_CMD -c "import fastapi, uvicorn, resend" 2>/dev/null
 if [ $? -ne 0 ]; then
     echo "⚠️  백엔드 패키지를 설치합니다..."
-    pip install -r requirements.txt
+    $PYTHON_CMD -m pip install -r requirements.txt
 fi
 cd ..
 
@@ -84,7 +88,7 @@ echo "🔍 프론트엔드 의존성 확인 중..."
 if [ ! -d "frontend/node_modules" ]; then
     echo "⚠️  프론트엔드 패키지를 설치합니다..."
     cd frontend
-    npm install
+    npm install --legacy-peer-deps
     cd ..
 fi
 
@@ -97,7 +101,7 @@ echo ""
 # 백엔드 서버 시작 (백그라운드)
 echo "🔧 백엔드 서버 시작 중... (포트 8000)"
 cd backend
-python main.py > ../backend.log 2>&1 &
+$PYTHON_CMD main.py > ../backend.log 2>&1 &
 BACKEND_PID=$!
 cd ..
 

@@ -15,7 +15,7 @@ export default function Home() {
             파이썬 학습의 모든 것
           </h2>
           <p className="hero-subtitle">
-            타이핑 연습부터 파이썬 학습, 파이게임 기초 문법, 게임 만들기까지<br />
+            타이핑 연습부터 파이썬 학습, 파이게임 기초 문법, 데이터 분석과 시각화, AI 코딩, 게임 만들기까지<br />
             <strong>회원가입 없이</strong> 바로 시작하세요!
           </p>
           <div className="hero-badges">
@@ -29,8 +29,8 @@ export default function Home() {
       {/* Features Section */}
       <section id="features" className="features">
         <div className="container">
-          <h3 className="section-title">네 가지 학습 모드</h3>
-          
+          <h3 className="section-title">여섯 가지 학습 모드</h3>
+
           <div className="feature-grid">
             {/* Feature 1: 타이핑 연습 */}
             <div className="feature-card">
@@ -73,21 +73,49 @@ export default function Home() {
                 <li>리스트·딕셔너리 (적·아이템·점수)</li>
                 <li>random·while (랜덤·애니메이션)</li>
               </ul>
+              <Link to="/pygame" className="btn btn-primary">시작하기</Link>
+            </div>
+
+            {/* Feature 4: 데이터 분석과 시각화 */}
+            <div className="feature-card">
+              <div className="feature-icon">📊</div>
+              <h4>데이터 분석과 시각화</h4>
+              <p>데이터를 분석하고 시각화하는 방법 학습</p>
+              <ul className="feature-list">
+                <li>Pandas 데이터 분석</li>
+                <li>Matplotlib 시각화</li>
+                <li>NumPy 수치 연산</li>
+                <li>실전 데이터 프로젝트</li>
+              </ul>
               <button className="btn btn-primary" disabled>준비 중</button>
             </div>
 
-            {/* Feature 4: 파이게임 만들기 */}
+            {/* Feature 5: AI 코딩 */}
+            <div className="feature-card">
+              <div className="feature-icon">🤖</div>
+              <h4>AI 코딩</h4>
+              <p>인공지능과 머신러닝 기초 학습</p>
+              <ul className="feature-list">
+                <li>머신러닝 기초 개념</li>
+                <li>TensorFlow/Keras 실습</li>
+                <li>이미지 분류 프로젝트</li>
+                <li>챗봇 만들기</li>
+              </ul>
+              <button className="btn btn-primary" disabled>준비 중</button>
+            </div>
+
+            {/* Feature 6: 파이게임 만들기 */}
             <div className="feature-card">
               <div className="feature-icon">🎮</div>
               <h4>파이게임 만들기</h4>
               <p>나만의 게임을 만들어보세요</p>
               <ul className="feature-list">
-                <li>Pygame 튜토리얼</li>
-                <li>실시간 게임 미리보기</li>
-                <li>프로젝트 자동 저장</li>
-                <li>예제 게임 제공</li>
+                <li>레벨별 게임 예제 (15개)</li>
+                <li>실시간 코드 실행</li>
+                <li>단계별 학습 가이드</li>
+                <li>사과 먹기부터 슈팅 게임까지</li>
               </ul>
-              <button className="btn btn-primary" disabled>준비 중</button>
+              <Link to="/pygame-games" className="btn btn-primary">시작하기</Link>
             </div>
           </div>
         </div>

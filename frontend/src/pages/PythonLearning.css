@@ -1,3 +1,5 @@
+/* 공통 학습 페이지 스타일 */
+.learning-page,
 .python-learning {
   min-height: 100vh;
   display: flex;
@@ -6,6 +8,8 @@
 }
 
 /* Header */
+.learning-page .learning-header,
+.learning-page .header,
 .python-learning .header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -13,6 +17,8 @@
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
+.learning-page .learning-header .container,
+.learning-page .header .container,
 .python-learning .header .container {
   max-width: 1400px;
   margin: 0 auto;
@@ -22,10 +28,12 @@
   gap: 2rem;
 }
 
+.learning-page .logo,
 .python-learning .logo {
   flex-shrink: 0;
 }
 
+.learning-page .logo a,
 .python-learning .logo a {
   color: white;
   text-decoration: none;
@@ -41,11 +49,152 @@
   justify-content: flex-end;
 }
 
+.learning-page .page-title,
 .python-learning .page-title {
   font-size: 1.2rem;
   font-weight: 600;
   margin: 0;
   white-space: nowrap;
+}
+
+/* Header Right Section */
+.header-right-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+/* Admin Login Link */
+.admin-login-link {
+  font-size: 1.5rem;
+  text-decoration: none;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-login-link:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+/* 드롭다운 메뉴 */
+.learning-page .dropdown,
+.python-learning .dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.learning-page .dropdown-toggle,
+.python-learning .dropdown-toggle {
+  background: none;
+  border: none;
+  color: white;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.learning-page .dropdown-toggle:hover,
+.python-learning .dropdown-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.learning-page .dropdown-menu,
+.python-learning .dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  min-width: 200px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.learning-page .dropdown:hover .dropdown-menu,
+.python-learning .dropdown:hover .dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.learning-page .dropdown-item,
+.python-learning .dropdown-item {
+  display: block;
+  padding: 0.75rem 1.25rem;
+  color: #1a202c !important;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  white-space: nowrap;
+}
+
+.learning-page .dropdown-item:last-child,
+.python-learning .dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.learning-page .dropdown-item:hover,
+.python-learning .dropdown-item:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white !important;
+  transform: translateX(5px);
+}
+
+/* 비활성화된 드롭다운 아이템 */
+.learning-page .dropdown-item.disabled,
+.python-learning .dropdown-item.disabled {
+  color: #a0aec0 !important;
+  cursor: not-allowed;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.learning-page .dropdown-item.disabled:hover,
+.python-learning .dropdown-item.disabled:hover {
+  background: transparent;
+  color: #a0aec0 !important;
+  transform: none;
+}
+
+/* 준비중 배지 */
+.python-learning .badge-coming-soon {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 12px;
+  margin-left: 0.5rem;
 }
 
 /* Header Navigation Buttons */
@@ -98,6 +247,7 @@
 }
 
 /* Main Container */
+.learning-page .learning-container,
 .learning-container {
   display: flex;
   flex: 1;
@@ -110,6 +260,7 @@
 }
 
 /* Left Panel - Activity Info & Example */
+.learning-page .left-panel,
 .left-panel {
   width: 45%;
   display: flex;
@@ -314,6 +465,7 @@
 }
 
 /* Right Panel - Editor & Output */
+.learning-page .right-panel,
 .right-panel {
   flex: 1;
   display: flex;
@@ -478,50 +630,6 @@
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
-}
-
-.concept-tag::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%) translateY(-8px);
-  background: #2d3748;
-  color: white;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 400;
-  white-space: normal;
-  width: max-content;
-  max-width: 300px;
-  line-height: 1.5;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-  pointer-events: none;
-  z-index: 1000;
-}
-
-.concept-tag::before {
-  content: '';
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%) translateY(2px);
-  border: 6px solid transparent;
-  border-top-color: #2d3748;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-  z-index: 1000;
-}
-
-.concept-tag:hover::after,
-.concept-tag:hover::before {
-  opacity: 1;
-  visibility: visible;
 }
 
 /* Code Editor */
@@ -1281,6 +1389,387 @@
   font-size: 0.85rem;
   color: #718096;
   line-height: 1.4;
+}
+
+/* 난이도 배지 스타일 */
+.difficulty-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.difficulty-badge.초급 {
+  background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+}
+
+.difficulty-badge.중급 {
+  background: linear-gradient(135deg, #f09819 0%, #edde5d 100%);
+}
+
+.difficulty-badge.고급 {
+  background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+}
+
+/* 개념 태그 스타일 */
+.concepts-section {
+  margin-top: 15px;
+}
+
+.concepts-section h4 {
+  font-size: 1rem;
+  margin-bottom: 10px;
+  color: #667eea;
+}
+
+.concepts-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.concept-tag {
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* 힌트 섹션 스타일 */
+.hints-section {
+  margin-top: 15px;
+}
+
+.hints-section h4 {
+  font-size: 1rem;
+  margin-bottom: 10px;
+  color: #f09819;
+}
+
+.hints-section ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.hints-section li {
+  margin-bottom: 5px;
+  color: #555;
+}
+
+/* 게임 결과 스타일 */
+.game-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.game-result img,
+.pygame-screenshot {
+  max-width: 100%;
+  height: auto;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 힌트 섹션 스타일 개선 */
+.hints-section {
+  margin-top: 15px;
+}
+
+.hints-section strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  color: #f09819;
+}
+
+.hints-section ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style-type: disc;
+}
+
+.hints-section li {
+  margin-bottom: 8px;
+  color: #555;
+  line-height: 1.6;
+}
+
+/* 헤더 액션 버튼 그룹 */
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* 예제 코드 줄번호 스타일 */
+.example-code-with-lines {
+  background: white;
+  color: #333;
+  padding: 0;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0;
+  border: 1px solid #e2e8f0;
+}
+
+.code-line {
+  display: flex;
+  align-items: flex-start;
+  min-height: 1.6em;
+}
+
+.code-line:hover {
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.line-number {
+  display: inline-block;
+  width: 40px;
+  padding: 0 10px;
+  text-align: right;
+  color: #999;
+  user-select: none;
+  flex-shrink: 0;
+  background: #f7fafc;
+  border-right: 1px solid #e2e8f0;
+}
+
+.line-content {
+  padding: 0 10px;
+  white-space: pre;
+  flex: 1;
+  background: white;
+  color: #2d3748;
+}
+
+/* 실행 버튼 컨테이너 (가운데 정렬) */
+.run-button-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem 0;
+  margin-top: 1rem;
+}
+
+.run-button-center {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+  min-width: 150px;
+}
+
+.run-button-center:hover:not(:disabled) {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+}
+
+.run-button-center:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.run-button-center:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 오류 보고 버튼 */
+.report-error-button {
+  background: #e53e3e;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  animation: fadeIn 0.3s ease;
+  margin-left: 10px;
+}
+
+.report-error-button:hover {
+  background: #c53030;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(229, 62, 62, 0.3);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 오류 보고 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeInOverlay 0.3s ease;
+}
+
+@keyframes fadeInOverlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 85vh;
+  padding: 2rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  animation: slideUpModal 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@keyframes slideUpModal {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-content h2 {
+  margin: 0;
+  font-size: 1.75rem;
+  color: #2d3748;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-content p {
+  margin: 0;
+  color: #718096;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.error-textarea {
+  width: 100%;
+  min-height: 400px;
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  resize: vertical;
+  transition: all 0.3s ease;
+  background: #f7fafc;
+  color: #2d3748;
+}
+
+.error-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.submit-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+}
+
+.submit-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+}
+
+.submit-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.cancel-button {
+  background: #e2e8f0;
+  color: #4a5568;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cancel-button:hover {
+  background: #cbd5e0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.cancel-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* 반응형 디자인 */

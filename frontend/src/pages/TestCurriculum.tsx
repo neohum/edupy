@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { pythonCurriculum } from '../data/pythonCurriculum';
+import { pygameCurriculum } from '../data/pygameCurriculum';
 import { usePyodide, setupPythonEnvironment, wrapUserCode } from '../hooks/usePyodide';
 import './TestCurriculum.css';
 
@@ -15,6 +16,7 @@ interface TestResult {
 
 // 각 활동에 대한 테스트 입력값 정의
 const testInputs: { [key: string]: string[] } = {
+  // ===== 파이썬 기초 문법 =====
   // Level 3: 입력과 형변환
   '3-1': ['김파이'],
   '3-2': ['10'],
@@ -58,28 +60,54 @@ const testInputs: { [key: string]: string[] } = {
 
   // Level 10: Turtle 그래픽
   // turtle 모듈은 Pyodide에서 지원하지 않으므로 테스트 제외
+
+  // ===== 파이게임 기초 문법 =====
+  // Level 1: 출력과 입력
+  '1-1': ['용사'],
+  '1-4': ['김파이'],
+  '1-5': ['보통'],
 };
 
-// 테스트를 건너뛸 활동 목록 (무한 루프만)
+// 테스트를 건너뛸 활동 목록 (무한 루프 + pygame 실제 코드)
 const skipTests: string[] = [
+  // 파이썬 기초 문법
   '9-1', // while True 무한 루프 (숫자 맞추기 - 정답을 맞출 때까지)
   '7-2', // while True 무한 루프 (0이 나올 때까지)
+
+  // 파이게임 - Level 11 (실제 pygame 코드)
+  '11-1', // 기본 파이게임 루프
+  '11-2', // 키보드로 원 이동
+  '11-3', // 화면 가장자리에서 튕기기
+  '11-4', // 여러 적 그리기
+  '11-5', // 점수 텍스트 표시
 ];
 
-export default function TestCurriculum() {
+interface TestCurriculumProps {
+  hideHeader?: boolean;
+}
+
+export default function TestCurriculum({ hideHeader = false }: TestCurriculumProps) {
   const { pyodide, isReady, isLoading } = usePyodide();
   const [testing, setTesting] = useState(false);
   const [results, setResults] = useState<TestResult[]>([]);
   const [currentTest, setCurrentTest] = useState(0);
   const [totalTests, setTotalTests] = useState(0);
+  const [selectedCurriculum, setSelectedCurriculum] = useState<'python' | 'pygame'>('python');
 
   useEffect(() => {
     if (isReady && pyodide) {
-      setupPythonEnvironment(
-        pyodide,
-        () => {}, // output handler
-        async () => '' // input handler
-      );
+      // 기본 print 오버라이드만 설정
+      pyodide.runPython(`
+import builtins
+
+# print 오버라이드
+def custom_print(*args, sep=' ', end='\\n', **kwargs):
+    output = sep.join(str(arg) for arg in args)
+    if 'js_print' in globals():
+        js_print(output)
+
+builtins.print = custom_print
+      `);
     }
   }, [isReady, pyodide]);
 
@@ -95,11 +123,13 @@ export default function TestCurriculum() {
     const allActivities: TestResult[] = [];
     let testIndex = 0;
 
-    for (const level of pythonCurriculum.levels) {
+    const curriculum = selectedCurriculum === 'python' ? pythonCurriculum : pygameCurriculum;
+
+    for (const level of curriculum.levels) {
       for (const activity of level.activities) {
         testIndex++;
         setCurrentTest(testIndex);
-        setTotalTests(pythonCurriculum.levels.reduce((sum, l) => sum + l.activities.length, 0));
+        setTotalTests(curriculum.levels.reduce((sum, l) => sum + l.activities.length, 0));
 
         const hasInput = activity.starterCode.includes('input(');
         let output = '';
@@ -171,6 +201,55 @@ export default function TestCurriculum() {
           continue;
         }
 
+        // Pygame 모듈 테스트 (백엔드 API 사용)
+        const isPygameCode = activity.starterCode.includes('import pygame') ||
+                            activity.starterCode.includes('from pygame');
+
+        if (isPygameCode) {
+          try {
+            const response = await fetch('http://localhost:8000/api/pygame/execute', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                code: activity.starterCode,
+                width: 600,
+                height: 400,
+                max_frames: 60,
+              }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+              output = '🎮 Pygame 실행 성공!\n(이미지는 실제 학습 페이지에서 확인하세요)';
+              if (result.output) {
+                output += '\n\n출력:\n' + result.output;
+              }
+            } else {
+              error = result.error || 'Pygame 실행 실패';
+              if (result.output) {
+                output = result.output;
+              }
+            }
+          } catch (err: any) {
+            error = `백엔드 연결 실패: ${err.message}`;
+          }
+
+          allActivities.push({
+            id: activity.id,
+            title: activity.title,
+            code: activity.starterCode,
+            output,
+            error,
+            hasInput: false,
+            testInputs: []
+          });
+
+          setResults([...allActivities]);
+          await new Promise(resolve => setTimeout(resolve, 10));
+          continue;
+        }
+
         try {
           // output 캡처
           const outputs: string[] = [];
@@ -222,17 +301,68 @@ export default function TestCurriculum() {
     setCurrentTest(0);
   };
 
-  const successCount = results.filter(r => !r.error && !r.output.includes('⏭️')).length;
+  const successCount = results.filter(r => !r.error && !r.output.includes('⏭️') && !r.output.includes('🐢') && !r.output.includes('🎮')).length;
   const errorCount = results.filter(r => r.error).length;
   const skippedCount = results.filter(r => r.output.includes('⏭️')).length;
   const turtleCount = results.filter(r => r.output.includes('🐢')).length;
+  const pygameCount = results.filter(r => r.output.includes('🎮')).length;
 
   return (
-    <div className="test-curriculum-container">
-      <div className="test-header">
-        <h1>🧪 커리큘럼 예제 코드 테스트</h1>
-        <p>모든 레벨의 예제 코드를 자동으로 테스트합니다</p>
-      </div>
+    <>
+      {/* Header - hideHeader가 true면 숨김 */}
+      {!hideHeader && (
+        <header className="header">
+          <div className="container">
+            <h1 className="logo">
+              <a href="/">🐍 EduPy</a>
+            </h1>
+
+            <div className="page-title-wrapper">
+              <h2 className="page-title">
+                🧪 커리큘럼 예제 코드 테스트
+              </h2>
+            </div>
+
+            <div className="header-right-section">
+              {/* 학습 메뉴 드롭다운 */}
+              <div className="dropdown">
+                <button className="nav-link dropdown-toggle">
+                  🐍 학습 메뉴 ▼
+                </button>
+                <div className="dropdown-menu">
+                  <a href="https://tt.hancomtaja.com/ko" target="_blank" rel="noopener noreferrer" className="dropdown-item">
+                    ⌨️ 한컴 타자 연습
+                  </a>
+                  <a href="/python" className="dropdown-item">
+                    🐍 파이썬 학습
+                  </a>
+                  <a href="/pygame" className="dropdown-item">
+                    📚 파이게임 기초 문법
+                  </a>
+                  <div className="dropdown-item disabled">
+                    📊 데이터 분석과 시각화 <span className="badge-coming-soon">준비중</span>
+                  </div>
+                  <div className="dropdown-item disabled">
+                    🤖 AI 코딩 <span className="badge-coming-soon">준비중</span>
+                  </div>
+                  <div className="dropdown-item disabled">
+                    🎮 파이게임 만들기 <span className="badge-coming-soon">준비중</span>
+                  </div>
+                </div>
+              </div>
+
+              <a href="/admin/login" className="admin-login-link" title="관리자 로그인">
+                🔐
+              </a>
+            </div>
+          </div>
+        </header>
+      )}
+
+      <div className="test-curriculum-container">
+        <div className="test-header">
+          <p>모든 레벨의 예제 코드를 자동으로 테스트합니다</p>
+        </div>
 
       {isLoading && (
         <div className="loading-message">
@@ -241,9 +371,62 @@ export default function TestCurriculum() {
       )}
 
       {isReady && !testing && (
-        <button className="start-button" onClick={runAllTests}>
-          🚀 모든 예제 테스트 시작
-        </button>
+        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+          <div className="curriculum-selector" style={{
+            display: 'flex',
+            gap: '15px',
+            justifyContent: 'center',
+            marginBottom: '30px'
+          }}>
+            <button
+              className={`curriculum-tab ${selectedCurriculum === 'python' ? 'active' : ''}`}
+              onClick={() => setSelectedCurriculum('python')}
+              style={{
+                padding: '12px 30px',
+                fontSize: '1.1rem',
+                fontWeight: '600',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                background: selectedCurriculum === 'python'
+                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                  : '#e2e8f0',
+                color: selectedCurriculum === 'python' ? 'white' : '#4a5568',
+                transition: 'all 0.3s',
+                boxShadow: selectedCurriculum === 'python'
+                  ? '0 4px 15px rgba(102, 126, 234, 0.4)'
+                  : 'none'
+              }}
+            >
+              🐍 파이썬 기초 문법
+            </button>
+            <button
+              className={`curriculum-tab ${selectedCurriculum === 'pygame' ? 'active' : ''}`}
+              onClick={() => setSelectedCurriculum('pygame')}
+              style={{
+                padding: '12px 30px',
+                fontSize: '1.1rem',
+                fontWeight: '600',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                background: selectedCurriculum === 'pygame'
+                  ? 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)'
+                  : '#e2e8f0',
+                color: selectedCurriculum === 'pygame' ? 'white' : '#4a5568',
+                transition: 'all 0.3s',
+                boxShadow: selectedCurriculum === 'pygame'
+                  ? '0 4px 15px rgba(72, 187, 120, 0.4)'
+                  : 'none'
+              }}
+            >
+              🎮 파이게임 기초 문법
+            </button>
+          </div>
+          <button className="start-button" onClick={runAllTests}>
+            🚀 {selectedCurriculum === 'python' ? '파이썬' : '파이게임'} 예제 테스트 시작
+          </button>
+        </div>
       )}
 
       {testing && (
@@ -264,7 +447,9 @@ export default function TestCurriculum() {
 
       {results.length > 0 && (
         <div style={{ marginTop: '40px' }}>
-          <h2 style={{ fontSize: '2rem', color: '#2d3748', marginBottom: '20px' }}>📊 테스트 결과</h2>
+          <h2 style={{ fontSize: '2rem', color: '#2d3748', marginBottom: '20px' }}>
+            📊 {selectedCurriculum === 'python' ? '파이썬 기초 문법' : '파이게임 기초 문법'} 테스트 결과
+          </h2>
 
           <div className="results-summary">
             <div className="summary-card success">
@@ -279,16 +464,25 @@ export default function TestCurriculum() {
               <div className="summary-number">{skippedCount}</div>
               <div className="summary-label">⏭️ 건너뜀</div>
             </div>
-            <div className="summary-card turtle">
-              <div className="summary-number">{turtleCount}</div>
-              <div className="summary-label">🐢 Turtle</div>
-            </div>
+            {turtleCount > 0 && (
+              <div className="summary-card turtle">
+                <div className="summary-number">{turtleCount}</div>
+                <div className="summary-label">🐢 Turtle</div>
+              </div>
+            )}
+            {pygameCount > 0 && (
+              <div className="summary-card pygame">
+                <div className="summary-number">{pygameCount}</div>
+                <div className="summary-label">🎮 Pygame</div>
+              </div>
+            )}
           </div>
 
           <div className="results-grid">
             {results.map((result) => {
               const isSkipped = result.output.includes('⏭️');
               const isTurtle = result.output.includes('🐢');
+              const isPygame = result.output.includes('🎮');
               const cardClass = result.error ? 'error' : isSkipped ? 'skipped' : 'success';
 
               return (
@@ -302,6 +496,9 @@ export default function TestCurriculum() {
                     )}
                     {isTurtle && (
                       <span className="result-badge turtle">🐢 Turtle</span>
+                    )}
+                    {isPygame && (
+                      <span className="result-badge pygame">🎮 Pygame</span>
                     )}
                   </div>
 
@@ -345,7 +542,8 @@ export default function TestCurriculum() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

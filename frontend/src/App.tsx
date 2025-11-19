@@ -1,8 +1,10 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import PythonLearning from './pages/PythonLearning';
-import TestCurriculum from './pages/TestCurriculum';
-import ErrorManagement from './pages/ErrorManagement';
+import PygameLearning from './pages/PygameLearning';
+import PygameGames from './pages/PygameGames';
+import AdminLogin from './pages/AdminLogin';
+import AdminDashboard from './pages/AdminDashboard';
 import './App.css';
 
 function App() {
@@ -12,8 +14,10 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/python" element={<PythonLearning />} />
         <Route path="/learn" element={<PythonLearning />} />
-        <Route path="/test" element={<TestCurriculum />} />
-        <Route path="/error-management" element={<ErrorManagement />} />
+        <Route path="/pygame" element={<PygameLearning />} />
+        <Route path="/pygame-games" element={<PygameGames />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
       </Routes>
     </Router>
   );
