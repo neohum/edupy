@@ -1,7 +1,8 @@
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
+import asyncio
 from dotenv import load_dotenv
 import resend
 import os
@@ -19,12 +20,21 @@ from io import BytesIO
 import base64
 from turtle_runner import run_turtle_code
 from pygame_runner import run_pygame_code
+from pygame_streaming import (
+    session_manager, run_game_streaming, convert_js_key_to_pygame, GameState
+)
+from pygame_to_html import convert_pygame_to_html
 from auto_fix import fix_code_with_augment
 from database import (
     init_database, save_error_report, get_error_reports, get_error_statistics,
     get_error_by_id, toggle_error_resolved, save_fixed_code, get_admin_user,
     update_admin_totp, update_admin_last_login, check_duplicate_error_by_page,
-    save_new_error_report
+    save_new_error_report,
+    # Analytics functions
+    save_session, update_session_end, save_page_view, update_page_view_duration,
+    save_code_execution, save_learning_progress, get_analytics_overview,
+    get_daily_visitors, get_page_view_stats, get_device_distribution,
+    get_code_execution_stats, get_recent_activity, get_hourly_activity
 )
 
 # .env 파일 로드
@@ -409,6 +419,187 @@ async def execute_pygame_code(request: PygameCodeRequest):
             status_code=500,
             detail=f"Pygame 코드 실행 실패: {str(e)}"
         )
+
+
+# Pygame 스트리밍 세션 생성 요청 모델
+class PygameStreamRequest(BaseModel):
+    code: str
+    width: int = 800
+    height: int = 600
+
+
+# Pygame 스트리밍 세션 생성 API
+@app.post("/api/pygame/create-session")
+async def create_pygame_session(request: PygameStreamRequest):
+    """
+    Pygame 실시간 스트리밍을 위한 세션 생성
+    """
+    logger.info(f"Creating pygame streaming session (width={request.width}, height={request.height})")
+
+    try:
+        session_id = session_manager.create_session(
+            code=request.code,
+            width=request.width,
+            height=request.height
+        )
+
+        logger.info(f"Created pygame session: {session_id}")
+
+        return {
+            "success": True,
+            "session_id": session_id,
+            "websocket_url": f"/ws/pygame/{session_id}"
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to create pygame session: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"세션 생성 실패: {str(e)}"
+        )
+
+
+class PygameToHtmlRequest(BaseModel):
+    code: str
+    width: int = 800
+    height: int = 600
+
+
+@app.post("/api/pygame/to-html")
+async def pygame_to_html(request: PygameToHtmlRequest):
+    """
+    Pygame 코드를 HTML5 Canvas 게임으로 변환
+    브라우저에서 직접 실행 가능한 HTML 반환
+    """
+    logger.info(f"Converting pygame code to HTML (width={request.width}, height={request.height})")
+
+    try:
+        html = convert_pygame_to_html(
+            code=request.code,
+            width=request.width,
+            height=request.height
+        )
+
+        return {
+            "success": True,
+            "html": html
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to convert pygame to HTML: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"HTML 변환 실패: {str(e)}"
+        )
+
+
+# Pygame 스트리밍 WebSocket
+@app.websocket("/ws/pygame/{session_id}")
+async def pygame_websocket(websocket: WebSocket, session_id: str):
+    """
+    Pygame 게임 실시간 스트리밍 WebSocket
+
+    프로토콜:
+    - 서버 -> 클라이언트: {"type": "frame", "data": "<base64>"}
+    - 서버 -> 클라이언트: {"type": "status", "state": "running|stopped|error", "error": "..."}
+    - 클라이언트 -> 서버: {"type": "keydown|keyup", "key": "<js_key_code>"}
+    - 클라이언트 -> 서버: {"type": "close"}
+    """
+    await websocket.accept()
+    logger.info(f"WebSocket connected for session: {session_id}")
+
+    session = session_manager.get_session(session_id)
+    if not session:
+        await websocket.send_json({"type": "error", "message": "Session not found"})
+        await websocket.close()
+        return
+
+    # 연결 수 증가
+    session.connection_count += 1
+    is_primary = session.connection_count == 1  # 첫 번째 연결인지
+
+    async def send_frame(frame_data: str):
+        """프레임 전송"""
+        try:
+            await websocket.send_json({
+                "type": "frame",
+                "data": frame_data
+            })
+        except Exception:
+            session.state = GameState.STOPPED
+
+    async def send_status(state: str, error: str = None):
+        """상태 전송"""
+        try:
+            await websocket.send_json({
+                "type": "status",
+                "state": state,
+                "error": error
+            })
+        except Exception:
+            pass
+
+    async def handle_client_messages():
+        """클라이언트 메시지 처리"""
+        try:
+            while session.state in (GameState.WAITING, GameState.RUNNING):
+                try:
+                    data = await asyncio.wait_for(
+                        websocket.receive_json(),
+                        timeout=0.05
+                    )
+
+                    if data.get('type') == 'close':
+                        session.state = GameState.STOPPED
+                        break
+                    elif data.get('type') in ('keydown', 'keyup'):
+                        js_key = data.get('key', '')
+                        pygame_key = convert_js_key_to_pygame(js_key)
+                        logger.info(f"Key event: {data['type']} js_key={js_key} pygame_key={pygame_key}")
+                        if pygame_key is not None:
+                            session.key_queue.append({
+                                'type': data['type'],
+                                'key': pygame_key
+                            })
+                            logger.info(f"Key queue size: {len(session.key_queue)}")
+
+                except asyncio.TimeoutError:
+                    pass
+                except WebSocketDisconnect:
+                    break
+
+        except Exception as e:
+            logger.error(f"Error handling client messages: {str(e)}")
+
+    try:
+        if is_primary:
+            # 첫 번째 연결만 게임 실행
+            await asyncio.gather(
+                run_game_streaming(session, send_frame, send_status),
+                handle_client_messages()
+            )
+        else:
+            # 추가 연결은 메시지 핸들링만
+            await handle_client_messages()
+    except Exception as e:
+        logger.error(f"Game streaming error: {str(e)}")
+        await send_status('error', str(e))
+    finally:
+        # 연결 수 감소
+        session.connection_count -= 1
+        logger.info(f"Connection count for {session_id}: {session.connection_count}")
+
+        # 마지막 연결이 종료되면 세션 정리
+        if session.connection_count <= 0:
+            session_manager.remove_session(session_id)
+            logger.info(f"Session removed: {session_id}")
+
+        try:
+            await websocket.close()
+        except Exception:
+            pass
+        logger.info(f"WebSocket closed for session: {session_id}")
+
 
 # 오류 보고 API
 @app.post("/api/error-report")
@@ -1218,6 +1409,220 @@ async def batch_test_errors(
     except Exception as e:
         logger.error(f"Failed to batch test errors: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to batch test errors: {str(e)}")
+
+# ==================== Analytics API ====================
+
+class SessionStartRequest(BaseModel):
+    session_id: str
+    user_agent: str
+    device_type: str
+    browser: str
+    os: str
+    screen_width: int
+    screen_height: int
+
+class PageViewRequest(BaseModel):
+    session_id: str
+    page_path: str
+    page_title: str
+    referrer: Optional[str] = ""
+
+class PageLeaveRequest(BaseModel):
+    session_id: str
+    page_path: str
+    duration_seconds: int
+
+class CodeExecutionRequest(BaseModel):
+    session_id: str
+    page_path: str
+    curriculum_type: Optional[str] = None
+    level_name: Optional[str] = None
+    activity_name: Optional[str] = None
+    execution_result: str
+    error_message: Optional[str] = None
+    execution_time_ms: int
+
+class LearningProgressRequest(BaseModel):
+    session_id: str
+    curriculum_type: str
+    level_index: int
+    activity_index: int
+    total_activities: int
+    completed_count: int
+    completion_percentage: float
+
+@app.post("/api/analytics/session")
+async def track_session_start(request: SessionStartRequest):
+    """세션 시작 추적"""
+    try:
+        success = save_session(
+            session_id=request.session_id,
+            user_agent=request.user_agent,
+            device_type=request.device_type,
+            browser=request.browser,
+            os=request.os,
+            screen_width=request.screen_width,
+            screen_height=request.screen_height
+        )
+        return {"success": success}
+    except Exception as e:
+        logger.error(f"Failed to track session: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/analytics/session-end")
+async def track_session_end(session_id: str):
+    """세션 종료 추적"""
+    try:
+        success = update_session_end(session_id)
+        return {"success": success}
+    except Exception as e:
+        logger.error(f"Failed to track session end: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/analytics/page-view")
+async def track_page_view(request: PageViewRequest):
+    """페이지 조회 추적"""
+    try:
+        view_id = save_page_view(
+            session_id=request.session_id,
+            page_path=request.page_path,
+            page_title=request.page_title,
+            referrer=request.referrer or ""
+        )
+        return {"success": view_id > 0, "view_id": view_id}
+    except Exception as e:
+        logger.error(f"Failed to track page view: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/analytics/page-leave")
+async def track_page_leave(request: PageLeaveRequest):
+    """페이지 이탈 추적 (체류 시간)"""
+    try:
+        success = update_page_view_duration(
+            session_id=request.session_id,
+            page_path=request.page_path,
+            duration_seconds=request.duration_seconds
+        )
+        return {"success": success}
+    except Exception as e:
+        logger.error(f"Failed to track page leave: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/analytics/code-execution")
+async def track_code_execution(request: CodeExecutionRequest):
+    """코드 실행 추적"""
+    try:
+        exec_id = save_code_execution(
+            session_id=request.session_id,
+            page_path=request.page_path,
+            curriculum_type=request.curriculum_type,
+            level_name=request.level_name,
+            activity_name=request.activity_name,
+            execution_result=request.execution_result,
+            error_message=request.error_message,
+            execution_time_ms=request.execution_time_ms
+        )
+        return {"success": exec_id > 0, "execution_id": exec_id}
+    except Exception as e:
+        logger.error(f"Failed to track code execution: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/analytics/progress")
+async def track_learning_progress(request: LearningProgressRequest):
+    """학습 진도 추적"""
+    try:
+        success = save_learning_progress(
+            session_id=request.session_id,
+            curriculum_type=request.curriculum_type,
+            level_index=request.level_index,
+            activity_index=request.activity_index,
+            total_activities=request.total_activities,
+            completed_count=request.completed_count,
+            completion_percentage=request.completion_percentage
+        )
+        return {"success": success}
+    except Exception as e:
+        logger.error(f"Failed to track learning progress: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+# ==================== Analytics Data API (관리자 전용) ====================
+
+@app.get("/api/analytics/overview")
+async def get_overview(days: int = 7, username: str = Depends(verify_token)):
+    """분석 개요 조회 (관리자 전용)"""
+    try:
+        data = get_analytics_overview(days)
+        logger.info(f"Analytics overview requested by admin: {username}")
+        return {"success": True, "data": data}
+    except Exception as e:
+        logger.error(f"Failed to get analytics overview: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/analytics/daily-visitors")
+async def get_visitors(days: int = 7, username: str = Depends(verify_token)):
+    """일별 방문자 추이 조회 (관리자 전용)"""
+    try:
+        data = get_daily_visitors(days)
+        logger.info(f"Daily visitors requested by admin: {username}")
+        return {"success": True, "data": data}
+    except Exception as e:
+        logger.error(f"Failed to get daily visitors: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/analytics/page-views")
+async def get_page_views(days: int = 7, username: str = Depends(verify_token)):
+    """페이지별 조회수 조회 (관리자 전용)"""
+    try:
+        data = get_page_view_stats(days)
+        logger.info(f"Page view stats requested by admin: {username}")
+        return {"success": True, "data": data}
+    except Exception as e:
+        logger.error(f"Failed to get page views: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/analytics/devices")
+async def get_devices(username: str = Depends(verify_token)):
+    """기기 분포 조회 (관리자 전용)"""
+    try:
+        data = get_device_distribution()
+        logger.info(f"Device distribution requested by admin: {username}")
+        return {"success": True, "data": data}
+    except Exception as e:
+        logger.error(f"Failed to get device distribution: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/analytics/code-stats")
+async def get_code_stats(days: int = 7, username: str = Depends(verify_token)):
+    """코드 실행 통계 조회 (관리자 전용)"""
+    try:
+        data = get_code_execution_stats(days)
+        logger.info(f"Code execution stats requested by admin: {username}")
+        return {"success": True, "data": data}
+    except Exception as e:
+        logger.error(f"Failed to get code stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/analytics/recent-activity")
+async def get_activity(limit: int = 20, username: str = Depends(verify_token)):
+    """최근 활동 조회 (관리자 전용)"""
+    try:
+        data = get_recent_activity(limit)
+        logger.info(f"Recent activity requested by admin: {username}")
+        return {"success": True, "data": data}
+    except Exception as e:
+        logger.error(f"Failed to get recent activity: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/analytics/hourly-activity")
+async def get_hourly(days: int = 1, username: str = Depends(verify_token)):
+    """시간대별 활동 조회 (관리자 전용)"""
+    try:
+        data = get_hourly_activity(days)
+        logger.info(f"Hourly activity requested by admin: {username}")
+        return {"success": True, "data": data}
+    except Exception as e:
+        logger.error(f"Failed to get hourly activity: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

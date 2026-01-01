@@ -2,12 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import Joyride from 'react-joyride';
 import type { CallBackProps, Step } from 'react-joyride';
-import Swal from 'sweetalert2';
+import { toast } from 'sonner';
 import { pythonCurriculum, conceptExplanations } from '../data/pythonCurriculum';
 import { useProgress, useCompletedActivities } from '../hooks/useLocalStorage';
 import { usePyodide, setupPythonEnvironment, wrapUserCode } from '../hooks/usePyodide';
 import ProgressModal from '../components/ProgressModal';
+import OutputModal from '../components/OutputModal';
 import ErrorReportButton from '../components/ErrorReportButton';
+import ThemeDropdown from '../components/ThemeDropdown';
+import LearningMenuDropdown from '../components/LearningMenuDropdown';
 import Footer from '../components/Footer';
 import { API_ENDPOINTS } from '../config/api';
 import './PythonLearning.css';
@@ -28,12 +31,14 @@ export default function PythonLearning() {
   const [inputPrompt, setInputPrompt] = useState('');
   const [userInput, setUserInput] = useState('');
   const [showProgressModal, setShowProgressModal] = useState(false);
+  const [showOutputModal, setShowOutputModal] = useState(false);
   const [errorInfo, setErrorInfo] = useState<{message: string, code: string} | null>(null);
 
   // 검색 관련 상태
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Array<{title: string, url: string, description: string}>>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [showHelpSection, setShowHelpSection] = useState(false);
 
   // 툴팁 상태
   const [activeTooltip, setActiveTooltip] = useState<number | null>(null);
@@ -83,7 +88,7 @@ export default function PythonLearning() {
   const [turtleFrames, setTurtleFrames] = useState<string[]>([]);
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const animationTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentLevel = pythonCurriculum.levels[currentLevelIndex];
   const currentActivity = currentLevel.activities[currentActivityIndex];
@@ -106,7 +111,7 @@ export default function PythonLearning() {
       setCurrentLevelIndex(0);
       setCurrentActivityIndex(0);
       clearExecutionResults();
-      alert('진행 상황이 초기화되었습니다.');
+      toast.success('진행 상황이 초기화되었습니다.');
     }
   };
 
@@ -159,71 +164,10 @@ export default function PythonLearning() {
       setRunTour(false);
       setTourCompleted(true);
 
-      // 투어 완료 여부 확인
-      if (status === 'finished') {
-        const result = await Swal.fire({
-          title: '🎉 가이드 투어 완료!',
-          html: `
-            <p style="font-size: 1.1rem; margin-bottom: 1rem;">
-              파이썬 학습 페이지의 모든 기능을 확인했습니다!
-            </p>
-            <p style="font-size: 0.95rem; color: #666;">
-              다음에도 이 가이드를 보시겠습니까?
-            </p>
-          `,
-          icon: 'success',
-          showCancelButton: true,
-          confirmButtonText: '네, 다음에도 보기',
-          cancelButtonText: '아니오, 다시 보지 않기',
-          confirmButtonColor: '#667eea',
-          cancelButtonColor: '#e53e3e',
-          reverseButtons: true,
-        });
-
-        if (result.isDismissed || result.dismiss === Swal.DismissReason.cancel) {
-          localStorage.setItem('edupy_tour_completed', 'true');
-          Swal.fire({
-            title: '설정 완료',
-            text: '다음부터 가이드 투어가 자동으로 표시되지 않습니다. ❓ 버튼을 클릭하면 언제든 다시 볼 수 있습니다.',
-            icon: 'info',
-            confirmButtonText: '확인',
-            confirmButtonColor: '#667eea',
-            timer: 3000,
-            timerProgressBar: true,
-          });
-        }
-      } else if (status === 'skipped') {
-        const result = await Swal.fire({
-          title: '가이드 투어 건너뛰기',
-          html: `
-            <p style="font-size: 1rem; margin-bottom: 1rem;">
-              가이드 투어를 건너뛰었습니다.
-            </p>
-            <p style="font-size: 0.95rem; color: #666;">
-              다음부터 이 가이드를 보지 않으시겠습니까?
-            </p>
-          `,
-          icon: 'question',
-          showCancelButton: true,
-          confirmButtonText: '네, 다시 보지 않기',
-          cancelButtonText: '아니오, 다음에 보기',
-          confirmButtonColor: '#e53e3e',
-          cancelButtonColor: '#667eea',
-          reverseButtons: true,
-        });
-
-        if (result.isConfirmed) {
-          localStorage.setItem('edupy_tour_completed', 'true');
-          Swal.fire({
-            title: '설정 완료',
-            text: '다음부터 가이드 투어가 자동으로 표시되지 않습니다. ❓ 버튼을 클릭하면 언제든 다시 볼 수 있습니다.',
-            icon: 'info',
-            confirmButtonText: '확인',
-            confirmButtonColor: '#667eea',
-            timer: 3000,
-            timerProgressBar: true,
-          });
-        }
+      if (status === 'skipped') {
+        // "다시 보지 않기" 클릭 시 바로 저장
+        localStorage.setItem('edupy_tour_completed', 'true');
+        toast.info('가이드 투어가 비활성화되었습니다. ❓ 버튼을 클릭하면 다시 볼 수 있습니다.');
       }
     }
   };
@@ -321,12 +265,14 @@ export default function PythonLearning() {
   const handleRunCode = async () => {
     if (!pyodideReady || !pyodide) {
       setOutput('❌ Python 환경이 아직 준비되지 않았습니다. 잠시만 기다려주세요.');
+      setShowOutputModal(true);
       return;
     }
 
     setIsRunning(true);
     setOutput('');
     setWaitingForInput(false);
+    setShowOutputModal(true);
 
     // turtle 코드인지 확인 (오타 포함)
     const isTurtleCode =
@@ -654,7 +600,7 @@ export default function PythonLearning() {
         callback={handleJoyrideCallback}
         styles={{
           options: {
-            primaryColor: '#667eea',
+            primaryColor: 'var(--theme-accent)',
             zIndex: 10000,
           },
           tooltip: {
@@ -662,12 +608,12 @@ export default function PythonLearning() {
             padding: 20,
           },
           buttonNext: {
-            backgroundColor: '#667eea',
+            backgroundColor: 'var(--theme-accent)',
             fontSize: 14,
             padding: '10px 20px',
           },
           buttonBack: {
-            color: '#667eea',
+            color: 'var(--theme-accent)',
             fontSize: 14,
             padding: '10px 20px',
           },
@@ -681,7 +627,7 @@ export default function PythonLearning() {
           close: '닫기',
           last: '완료',
           next: '다음',
-          skip: '건너뛰기',
+          skip: '다시 보지 않기',
         }}
       />
 
@@ -689,7 +635,7 @@ export default function PythonLearning() {
       <header className="header">
         <div className="container">
           <h1 className="logo">
-            <a href="/">🐍 EduPy</a>
+            <a href="/"><span className="logo-icon">EPY</span>EduPy</a>
           </h1>
 
           <div className="page-title-wrapper">
@@ -698,13 +644,13 @@ export default function PythonLearning() {
               onClick={goToPreviousActivity}
               disabled={!hasPrevious}
             >
-              <span className="nav-emoji">⬅️</span>
+              <span className="nav-emoji"><i className="fi fi-rr-angle-left"></i></span>
               <span className="nav-text">이전</span>
             </button>
 
             <h2 className="page-title">
               파이썬 기초 문법 - Level {currentLevel.level} ({currentActivityIndex + 1}/{currentLevel.activities.length})
-              {completedActivities.has(currentActivity.id) && <span className="completed-badge">✓ 완료</span>}
+              {completedActivities.has(currentActivity.id) && <span className="completed-badge"><i className="fi fi-rr-check"></i> 완료</span>}
               <button
                 className="tour-restart-button"
                 onClick={() => {
@@ -713,7 +659,7 @@ export default function PythonLearning() {
                 }}
                 title="가이드 투어 다시 보기"
               >
-                ❓
+                <i className="fi fi-rr-interrogation"></i>
               </button>
             </h2>
 
@@ -723,55 +669,32 @@ export default function PythonLearning() {
               disabled={!hasNext}
             >
               <span className="nav-text">다음</span>
-              <span className="nav-emoji">➡️</span>
+              <span className="nav-emoji"><i className="fi fi-rr-angle-right"></i></span>
             </button>
           </div>
 
           <div className="header-right-section">
+            {/* 테마 선택 드롭다운 */}
+            <ThemeDropdown />
+
             {/* 학습 메뉴 드롭다운 */}
-            <div className="dropdown">
-              <button className="nav-link dropdown-toggle">
-                🐍 학습 메뉴 ▼
-              </button>
-              <div className="dropdown-menu">
-                <a href="https://tt.hancomtaja.com/ko" target="_blank" rel="noopener noreferrer" className="dropdown-item">
-                  ⌨️ 한컴 타자 연습
-                </a>
-                <a href="/python" className="dropdown-item">
-                  🐍 파이썬 학습
-                </a>
-                <a href="/pygame" className="dropdown-item">
-                  📚 파이게임 기초 문법
-                </a>
-                <a href="/pygame-games" className="dropdown-item">
-                  🎮 파이게임 만들기
-                </a>
-                <div className="dropdown-item disabled">
-                  📊 데이터 분석과 시각화 <span className="badge-coming-soon">준비중</span>
-                </div>
-                <div className="dropdown-item disabled">
-                  🤖 AI 코딩 <span className="badge-coming-soon">준비중</span>
-                </div>
-              </div>
-            </div>
+            <LearningMenuDropdown />
 
             <a href="/admin/login" className="admin-login-link" title="관리자 로그인">
-              🔐
+              <i className="fi fi-rr-lock"></i>
             </a>
           </div>
         </div>
       </header>
 
       <div className="learning-container">
-        {/* Left Panel - Activity Info & Example Code */}
-        <aside className="left-panel">
-          {/* Activity Info */}
-          <div className="activity-info-box">
+        {/* Activity Info - Full Width */}
+        <div className="activity-info-box">
             <div className="activity-header">
               <h2 className="activity-main-title">
                 {currentActivity.title}
                 {completedActivities.has(currentActivity.id) && (
-                  <span className="activity-completed-badge">✓</span>
+                  <span className="activity-completed-badge"><i className="fi fi-rr-check"></i></span>
                 )}
               </h2>
               <div className="progress-controls">
@@ -787,7 +710,7 @@ export default function PythonLearning() {
                   onClick={resetProgress}
                   title="진행 상황 초기화"
                 >
-                  🔄 학습 초기화
+                  <i className="fi fi-rr-refresh"></i> 학습 초기화
                 </button>
               </div>
             </div>
@@ -796,36 +719,26 @@ export default function PythonLearning() {
             <div className="concepts">
               <strong>핵심 개념:</strong>
               {currentLevel.concepts.map((concept, index) => {
-                // 툴팁 위치 계산 (화면 밖으로 나가지 않도록)
-                const getTooltipStyle = () => {
-                  const baseStyle: React.CSSProperties = {
-                    position: 'fixed',
-                    bottom: 'auto',
-                    top: 'auto',
-                    left: 'auto',
-                    right: 'auto',
-                    marginBottom: '8px',
-                    padding: '10px 14px',
-                    background: '#2d3748',
-                    color: 'white',
-                    borderRadius: '8px',
-                    fontSize: '0.9rem',
-                    whiteSpace: 'normal',
-                    width: '600px',
-                    maxWidth: '90vw',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                    zIndex: 10000,
-                    animation: 'fadeIn 0.2s ease-in-out',
-                    lineHeight: '1.5'
-                  };
-
-                  // 화면 중앙에 배치
-                  baseStyle.left = '50%';
-                  baseStyle.top = '50%';
-                  baseStyle.transform = 'translate(-50%, -50%)';
-
-                  return baseStyle;
-                };
+                // 툴팁 위치 계산 (버튼 위 10px에 배치)
+                const getTooltipStyle = (): React.CSSProperties => ({
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  marginBottom: '10px',
+                  padding: '10px 14px',
+                  background: '#2d3748',
+                  color: 'white',
+                  borderRadius: '8px',
+                  fontSize: '0.9rem',
+                  whiteSpace: 'normal',
+                  width: '300px',
+                  maxWidth: '90vw',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  zIndex: 10000,
+                  animation: 'fadeIn 0.2s ease-in-out',
+                  lineHeight: '1.5'
+                });
 
                 return (
                   <span
@@ -840,39 +753,26 @@ export default function PythonLearning() {
                   >
                     {concept}
                     {activeTooltip === index && (
-                      <>
-                        {/* 반투명 배경 오버레이 */}
-                        <div
-                          style={{
-                            position: 'fixed',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: 'rgba(0, 0, 0, 0.5)',
-                            zIndex: 9999
-                          }}
-                          onClick={() => setActiveTooltip(null)}
-                        />
-                        {/* 툴팁 */}
-                        <span
-                          className="concept-tooltip"
-                          style={getTooltipStyle()}
-                        >
-                          {conceptExplanations[concept] || concept}
-                        </span>
-                      </>
+                      <span
+                        className="concept-tooltip"
+                        style={getTooltipStyle()}
+                      >
+                        {conceptExplanations[concept] || concept}
+                      </span>
                     )}
                   </span>
                 );
               })}
             </div>
-          </div>
+        </div>
 
-          {/* Example Code */}
-          <div className="example-code-section">
+        {/* Editor Row - Example Code and Code Editor Side by Side */}
+        <div className="editor-row">
+          {/* Left Panel - Example Code */}
+          <div className="left-panel">
+            <div className="example-code-section">
             <div className="example-header">
-              <span>📝 예제 코드</span>
+              <span><i className="fi fi-rr-document"></i> 예제 코드</span>
               <button
                 className="copy-button"
                 onClick={handleCopyCode}
@@ -893,7 +793,7 @@ export default function PythonLearning() {
             {/* 이모지 입력 힌트 */}
             {currentActivity.starterCode.match(/[😀-🙏🌀-🗿🚀-🛿]/u) && (
               <div className="emoji-hint">
-                💡 <strong>이모지 입력 방법:</strong>
+                <i className="fi fi-rr-lightbulb-on"></i> <strong>이모지 입력 방법:</strong>
                 <div className="hint-methods">
                   <span>
                     • 윈도우:
@@ -927,96 +827,115 @@ export default function PythonLearning() {
 
             {/* 도움 받기 / 원하는 기능 찾기 */}
             <div className="help-section">
-              <div className="help-header">
-                <span>🆘 도움 받기 / 원하는 기능 찾기</span>
-              </div>
+              <button
+                className="help-header"
+                onClick={() => setShowHelpSection(!showHelpSection)}
+                style={{
+                  width: '100%',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <span><i className="fi fi-rr-life-ring"></i> 도움 받기 / 원하는 기능 찾기</span>
+                <span style={{
+                  transition: 'transform 0.3s ease',
+                  transform: showHelpSection ? 'rotate(180deg)' : 'rotate(0deg)'
+                }}>
+                  <i className="fi fi-rr-angle-down"></i>
+                </span>
+              </button>
 
-              {/* 검색창 */}
-              <div className="search-box">
-                <input
-                  type="text"
-                  className="search-input"
-                  placeholder="궁금한 내용을 검색하세요 (예: 리스트, 반복문, 함수)"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSearchClick();
-                    }
-                  }}
-                />
-                <button
-                  className="search-button"
-                  onClick={handleSearchClick}
-                  disabled={isSearching || !searchQuery.trim()}
-                >
-                  {isSearching ? '🔍 검색 중...' : '🔍 검색'}
-                </button>
-              </div>
+              {showHelpSection && (
+                <>
+                  {/* 검색창 */}
+                  <div className="search-box">
+                    <input
+                      type="text"
+                      className="search-input"
+                      placeholder="궁금한 내용을 검색하세요 (예: 리스트, 반복문, 함수)"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSearchClick();
+                        }
+                      }}
+                    />
+                    <button
+                      className="search-button"
+                      onClick={handleSearchClick}
+                      disabled={isSearching || !searchQuery.trim()}
+                    >
+                      {isSearching ? <><i className="fi fi-rr-spinner"></i> 검색 중...</> : <><i className="fi fi-rr-search"></i> 검색</>}
+                    </button>
+                  </div>
 
-              {/* 검색 결과 */}
-              <div className="help-links">
-                {searchResults.length > 0 ? (
-                  <>
-                    <div className="search-results-header">
-                      🔍 검색 결과 {searchResults.length}개
-                    </div>
-                    {searchResults.map((result, index) => {
-                      // 아이콘 배열
-                      const icons = ['📚', '📖', '🎥', '💡', '🔗', '📝', '🌐', '📄', '🎓', '⭐'];
-                      return (
-                        <a
-                          key={index}
-                          href={result.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="help-link"
-                        >
-                          <div className="link-icon">
-                            {icons[index % icons.length]}
-                          </div>
-                          <div className="link-content">
-                            <div className="link-title">
-                              {index + 1}. {result.title}
-                            </div>
-                            <div className="link-description">
-                              {result.description}
-                            </div>
-                          </div>
-                        </a>
-                      );
-                    })}
-                  </>
-                ) : searchQuery && !isSearching ? (
-                  <div className="no-results">
-                    검색 결과가 없습니다. 다른 키워드로 검색해보세요.
+                  {/* 검색 결과 */}
+                  <div className="help-links">
+                    {searchResults.length > 0 ? (
+                      <>
+                        <div className="search-results-header">
+                          <i className="fi fi-rr-search"></i> 검색 결과 {searchResults.length}개
+                        </div>
+                        {searchResults.map((result, index) => {
+                          // 아이콘 배열
+                          const iconClasses = ['fi-rr-book', 'fi-rr-document', 'fi-rr-play-circle', 'fi-rr-lightbulb-on', 'fi-rr-link', 'fi-rr-edit', 'fi-rr-globe', 'fi-rr-file', 'fi-rr-graduation-cap', 'fi-rr-star'];
+                          return (
+                            <a
+                              key={index}
+                              href={result.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="help-link"
+                            >
+                              <div className="link-icon">
+                                <i className={`fi ${iconClasses[index % iconClasses.length]}`}></i>
+                              </div>
+                              <div className="link-content">
+                                <div className="link-title">
+                                  {index + 1}. {result.title}
+                                </div>
+                                <div className="link-description">
+                                  {result.description}
+                                </div>
+                              </div>
+                            </a>
+                          );
+                        })}
+                      </>
+                    ) : searchQuery && !isSearching ? (
+                      <div className="no-results">
+                        검색 결과가 없습니다. 다른 키워드로 검색해보세요.
+                      </div>
+                    ) : !searchQuery ? (
+                      <div className="search-placeholder">
+                        <i className="fi fi-rr-lightbulb-on"></i> 궁금한 내용을 검색하면 관련 학습 자료를 찾아드립니다!
+                      </div>
+                    ) : null}
                   </div>
-                ) : !searchQuery ? (
-                  <div className="search-placeholder">
-                    💡 궁금한 내용을 검색하면 관련 학습 자료를 찾아드립니다!
-                  </div>
-                ) : null}
-              </div>
+                </>
+              )}
             </div>
           </div>
-        </aside>
+          </div>
 
-        {/* Right Panel - Code Editor & Output */}
-        <main className="right-panel">
-          {/* Code Editor */}
-          <div className="code-editor-section">
+          {/* Right Panel - Code Editor */}
+          <div className="right-panel">
+            <div className="code-editor-section">
             <div className="editor-header" style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '0.75rem 1rem',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'linear-gradient(135deg, var(--theme-accent) 0%, var(--theme-secondary) 100%)',
               color: 'white',
               fontWeight: '600',
               borderTopLeftRadius: '8px',
               borderTopRightRadius: '8px'
             }}>
-              <span style={{ fontSize: '1rem' }}>💻 코드 에디터 (예제를 보고 따라 쳐보세요)</span>
+              <span style={{ fontSize: '1rem' }}><i className="fi fi-rr-laptop-code"></i> 코드 에디터 (예제를 보고 따라 쳐보세요)</span>
               <button
                 className="run-button"
                 onClick={handleRunCode}
@@ -1062,7 +981,7 @@ export default function PythonLearning() {
                   </>
                 ) : (
                   <>
-                    <span>▶️</span>
+                    <span><i className="fi fi-rr-play"></i></span>
                     실행하기
                   </>
                 )}
@@ -1070,149 +989,30 @@ export default function PythonLearning() {
             </div>
             <div className="monaco-editor-wrapper">
               <Editor
-                height="400px"
+                height={`${Math.max(200, currentActivity.starterCode.split('\n').length * 28 + 20)}px`}
                 defaultLanguage="python"
                 value={code}
                 onChange={(value) => setCode(value || '')}
                 theme="vs-dark"
                 options={{
                   minimap: { enabled: false },
-                  fontSize: 14,
+                  fontSize: 16,
                   lineNumbers: 'on',
                   scrollBeyondLastLine: false,
                   automaticLayout: true,
                   tabSize: 4,
                   wordWrap: 'on',
                   padding: { top: 10, bottom: 10 },
+                  cursorSurroundingLines: 3,
+                  cursorSurroundingLinesStyle: 'all',
                 }}
               />
             </div>
           </div>
-
-          {/* Output Area */}
-          <div className="output-section">
-            <div className="output-header" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: '0.5rem',
-              flexWrap: 'nowrap',
-              overflow: 'hidden'
-            }}>
-              <span style={{ flexShrink: 0 }}>📤 실행 결과</span>
-              {errorInfo && (
-                <ErrorReportButton
-                  errorInfo={errorInfo}
-                  level={`Level ${currentLevel.level}: ${currentLevel.title}`}
-                  activity={`${currentActivity.id} - ${currentActivity.title}`}
-                />
-              )}
-            </div>
-            <div className="output-content">
-              {output ? (
-                output.includes('<img') ? (
-                  <div dangerouslySetInnerHTML={{ __html: output.replace(/\n/g, '<br/>') }} />
-                ) : (
-                  <pre className="output-text">{output}</pre>
-                )
-              ) : (
-                <p className="output-placeholder">
-                  코드를 작성하고 실행 버튼을 눌러보세요!
-                </p>
-              )}
-
-              {/* Turtle 애니메이션 컨트롤 */}
-              {turtleFrames.length > 0 && (
-                <div className="turtle-animation-controls">
-                  <div className="animation-display">
-                    <img
-                      src={turtleFrames[currentFrameIndex]}
-                      alt={`Frame ${currentFrameIndex + 1}`}
-                      style={{
-                        maxWidth: '100%',
-                        border: '2px solid #667eea',
-                        borderRadius: '8px',
-                        marginTop: '10px'
-                      }}
-                    />
-                    <div className="frame-info">
-                      프레임 {currentFrameIndex + 1} / {turtleFrames.length}
-                    </div>
-                  </div>
-
-                  <div className="animation-buttons">
-                    <button
-                      onClick={resetAnimation}
-                      className="control-btn"
-                      title="처음으로"
-                    >
-                      ⏮️ 처음
-                    </button>
-                    <button
-                      onClick={prevFrame}
-                      className="control-btn"
-                      disabled={currentFrameIndex === 0}
-                      title="이전 프레임"
-                    >
-                      ⏪ 이전
-                    </button>
-                    <button
-                      onClick={isPlaying ? pauseAnimation : playAnimation}
-                      className="control-btn play-pause"
-                      title={isPlaying ? "일시정지" : "재생"}
-                    >
-                      {isPlaying ? '⏸️ 일시정지' : '▶️ 재생'}
-                    </button>
-                    <button
-                      onClick={nextFrame}
-                      className="control-btn"
-                      disabled={currentFrameIndex === turtleFrames.length - 1}
-                      title="다음 프레임"
-                    >
-                      다음 ⏩
-                    </button>
-                    <button
-                      onClick={() => {
-                        stopAnimation();
-                        setCurrentFrameIndex(turtleFrames.length - 1);
-                      }}
-                      className="control-btn"
-                      title="마지막으로"
-                    >
-                      마지막 ⏭️
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* 입력 대기 중일 때 입력 필드 표시 */}
-              {waitingForInput && (
-                <div className="input-area">
-                  <input
-                    type="text"
-                    className="console-input"
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleInputSubmit();
-                      }
-                    }}
-                    placeholder="입력 후 Enter를 누르세요..."
-                    autoFocus
-                  />
-                  <button
-                    className="input-submit-button"
-                    onClick={handleInputSubmit}
-                  >
-                    입력
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
-        </main>
-      </div>
+        </div>
+
+        </div>
 
       <Footer showGitHub={false} />
 
@@ -1224,6 +1024,33 @@ export default function PythonLearning() {
         currentLevelIndex={currentLevelIndex}
         currentActivityIndex={currentActivityIndex}
         onActivityClick={goToActivity}
+      />
+
+      <OutputModal
+        isOpen={showOutputModal}
+        onClose={() => setShowOutputModal(false)}
+        output={output}
+        isRunning={isRunning}
+        waitingForInput={waitingForInput}
+        inputPrompt={inputPrompt}
+        userInput={userInput}
+        onUserInputChange={setUserInput}
+        onInputSubmit={handleInputSubmit}
+        turtleFrames={turtleFrames}
+        currentFrameIndex={currentFrameIndex}
+        isPlaying={isPlaying}
+        onPlayAnimation={playAnimation}
+        onPauseAnimation={pauseAnimation}
+        onNextFrame={nextFrame}
+        onPrevFrame={prevFrame}
+        onResetAnimation={resetAnimation}
+        onGoToLastFrame={() => {
+          stopAnimation();
+          setCurrentFrameIndex(turtleFrames.length - 1);
+        }}
+        errorInfo={errorInfo}
+        level={`Level ${currentLevel.level}: ${currentLevel.title}`}
+        activity={`${currentActivity.id} - ${currentActivity.title}`}
       />
     </div>
   );

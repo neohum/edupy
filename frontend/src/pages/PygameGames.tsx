@@ -1,7 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
+import { toast } from 'sonner';
 import { pygameGamesCurriculum, gameConceptExplanations } from '../data/pygameGamesCurriculum';
+import ThemeDropdown from '../components/ThemeDropdown';
+import LearningMenuDropdown from '../components/LearningMenuDropdown';
+import OutputModal from '../components/OutputModal';
 import Footer from '../components/Footer';
+import { API_ENDPOINTS } from '../config/api';
 import './PythonLearning.css';
 
 export default function PygameGames() {
@@ -17,9 +22,23 @@ export default function PygameGames() {
   const [errorDescription, setErrorDescription] = useState('');
   const [errorSubmitting, setErrorSubmitting] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [isLaunchingNewWindow, setIsLaunchingNewWindow] = useState(false);
+  const [exampleCodeHeight, setExampleCodeHeight] = useState(300);
+  const [showCurriculumModal, setShowCurriculumModal] = useState(false);
+  const [showOutputModal, setShowOutputModal] = useState(false);
+  const gameWindowRef = useRef<Window | null>(null);
+  const exampleCodeRef = useRef<HTMLDivElement>(null);
 
   const currentLevel = pygameGamesCurriculum[currentLevelIndex];
   const currentActivity = currentLevel.activities[currentActivityIndex];
+
+  // 전체 활동 수 계산
+  const totalActivities = pygameGamesCurriculum.reduce((sum, level) => sum + level.activities.length, 0);
+
+  // 현재 활동 번호 계산
+  const currentActivityNumber = pygameGamesCurriculum
+    .slice(0, currentLevelIndex)
+    .reduce((sum, level) => sum + level.activities.length, 0) + currentActivityIndex + 1;
 
   // 활동 변경 시 코드 초기화
   useEffect(() => {
@@ -27,6 +46,14 @@ export default function PygameGames() {
     setOutput('');
     setGameImage(null);
     setHasError(false);
+  }, [currentActivity]);
+
+  // 예제 코드 높이 측정
+  useEffect(() => {
+    if (exampleCodeRef.current) {
+      const height = exampleCodeRef.current.offsetHeight;
+      setExampleCodeHeight(height);
+    }
   }, [currentActivity]);
 
   // 게임 타입 자동 감지
@@ -71,6 +98,7 @@ export default function PygameGames() {
     setOutput('🎮 게임을 실행하는 중...\n키 입력이 자동으로 시뮬레이션됩니다.\n');
     setGameImage(null);
     setHasError(false);
+    setShowOutputModal(true);
 
     try {
       // 게임 타입 자동 감지
@@ -109,6 +137,99 @@ export default function PygameGames() {
     }
   };
 
+  // 새 창에서 HTML5 게임 실행
+  const handleRunInNewWindow = async () => {
+    if (!code.trim()) {
+      toast.error('실행할 코드를 입력해주세요.');
+      return;
+    }
+
+    setIsLaunchingNewWindow(true);
+
+    try {
+      // 원본 예제 코드와 동일한지 확인
+      const isOriginalCode = code.trim() === currentActivity.exampleCode.trim();
+      console.log('원본 코드 여부:', isOriginalCode);
+
+      if (isOriginalCode) {
+        // 미리 생성된 정적 HTML 파일 사용
+        const gameFile = `/games/game_${currentActivity.id.replace('-', '_')}.html`;
+        console.log('정적 파일 사용:', gameFile);
+
+        const gameWindow = window.open(
+          gameFile,
+          '_blank',
+          'width=700,height=950,menubar=no,toolbar=no,location=no,status=no,resizable=yes'
+        );
+
+        if (gameWindow) {
+          gameWindowRef.current = gameWindow;
+          toast.success('게임이 새 창에서 실행됩니다!');
+
+          const checkWindow = setInterval(() => {
+            if (gameWindow.closed) {
+              clearInterval(checkWindow);
+              gameWindowRef.current = null;
+            }
+          }, 1000);
+        } else {
+          toast.error('팝업이 차단되었습니다. 팝업 차단을 해제해주세요.');
+        }
+      } else {
+        // 수정된 코드는 API로 동적 변환
+        console.log('동적 변환 사용, 코드 길이:', code.length);
+
+        const response = await fetch(API_ENDPOINTS.pygameToHtml, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            code: code,
+            width: 600,
+            height: 800,
+          }),
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.html) {
+          // Blob URL 방식으로 새 창 열기
+          const blob = new Blob([result.html], { type: 'text/html;charset=utf-8' });
+          const blobUrl = URL.createObjectURL(blob);
+
+          const gameWindow = window.open(
+            blobUrl,
+            '_blank',
+            'width=700,height=950,menubar=no,toolbar=no,location=no,status=no,resizable=yes'
+          );
+
+          if (gameWindow) {
+            gameWindowRef.current = gameWindow;
+            toast.success('수정된 코드로 게임이 실행됩니다!');
+
+            const checkWindow = setInterval(() => {
+              if (gameWindow.closed) {
+                clearInterval(checkWindow);
+                gameWindowRef.current = null;
+                URL.revokeObjectURL(blobUrl);
+              }
+            }, 1000);
+          } else {
+            URL.revokeObjectURL(blobUrl);
+            toast.error('팝업이 차단되었습니다. 팝업 차단을 해제해주세요.');
+          }
+        } else {
+          toast.error(`HTML 변환 실패: ${result.error || result.detail || '알 수 없는 오류'}`);
+        }
+      }
+    } catch (error: any) {
+      toast.error(`오류: ${error.message}`);
+    } finally {
+      setIsLaunchingNewWindow(false);
+    }
+  };
+
   // 예제 코드 복사
   const handleCopyCode = () => {
     navigator.clipboard.writeText(currentActivity.exampleCode);
@@ -141,7 +262,7 @@ export default function PygameGames() {
 
       if (checkResult.exists) {
         // 중복된 오류가 이미 존재
-        alert(`이 오류는 이미 보고되었습니다.\n\n보고 ID: ${checkResult.error_id}\n보고 시간: ${new Date(checkResult.created_at).toLocaleString()}\n\n관리자가 확인 중입니다.`);
+        toast.info(`이 오류는 이미 보고되었습니다. (ID: ${checkResult.error_id}) 관리자가 확인 중입니다.`);
         setErrorSubmitting(false);
         return;
       }
@@ -163,18 +284,18 @@ export default function PygameGames() {
 
       if (response.ok) {
         const result = await response.json();
-        alert(`오류가 자동으로 보고되었습니다!\n\n보고 ID: ${result.error_id}\n\n관리자가 확인 후 수정하겠습니다. 감사합니다!`);
+        toast.success(`오류가 보고되었습니다! (ID: ${result.error_id}) 감사합니다!`);
       } else {
         // 저장 실패 시 모달 표시
         setShowErrorModal(true);
         setErrorDescription(autoDescription);
-        alert('자동 저장에 실패했습니다. 직접 내용을 확인하고 제출해주세요.');
+        toast.warning('자동 저장에 실패했습니다. 직접 내용을 확인하고 제출해주세요.');
       }
     } catch (error) {
       // 네트워크 오류 시 모달 표시
       setShowErrorModal(true);
       setErrorDescription(autoDescription);
-      alert('오류 보고 중 문제가 발생했습니다. 직접 내용을 확인하고 제출해주세요.');
+      toast.error('오류 보고 중 문제가 발생했습니다. 직접 내용을 확인하고 제출해주세요.');
     } finally {
       setErrorSubmitting(false);
     }
@@ -182,7 +303,7 @@ export default function PygameGames() {
 
   const handleSubmitError = async () => {
     if (!errorDescription.trim()) {
-      alert('오류 내용을 입력해주세요.');
+      toast.warning('오류 내용을 입력해주세요.');
       return;
     }
 
@@ -204,14 +325,14 @@ export default function PygameGames() {
       });
 
       if (response.ok) {
-        alert('오류가 성공적으로 보고되었습니다. 감사합니다!');
+        toast.success('오류가 성공적으로 보고되었습니다. 감사합니다!');
         setShowErrorModal(false);
         setErrorDescription('');
       } else {
-        alert('오류 보고에 실패했습니다. 다시 시도해주세요.');
+        toast.error('오류 보고에 실패했습니다. 다시 시도해주세요.');
       }
     } catch (error) {
-      alert('오류 보고 중 문제가 발생했습니다.');
+      toast.error('오류 보고 중 문제가 발생했습니다.');
     } finally {
       setErrorSubmitting(false);
     }
@@ -243,12 +364,12 @@ export default function PygameGames() {
   );
 
   return (
-    <div className="learning-page">
+    <div className="learning-page pygame-games-page">
       {/* 헤더 */}
       <header className="learning-header">
         <div className="container">
           <h1 className="logo">
-            <a href="/">🐍 EduPy</a>
+            <a href="/"><span className="logo-icon">EPY</span>EduPy</a>
           </h1>
 
           <div className="page-title-wrapper">
@@ -257,12 +378,12 @@ export default function PygameGames() {
               onClick={handlePrevious}
               disabled={!hasPrevious}
             >
-              <span className="nav-emoji">⬅️</span>
+              <span className="nav-emoji"><i className="fi fi-rr-angle-left"></i></span>
               <span className="nav-text">이전</span>
             </button>
 
             <h2 className="page-title">
-              🎮 파이게임 만들기 - Level {currentLevel.level} ({currentActivityIndex + 1}/{currentLevel.activities.length})
+              <i className="fi fi-rr-gamepad"></i> 파이게임 만들기 - Level {currentLevel.level} ({currentActivityIndex + 1}/{currentLevel.activities.length})
             </h2>
 
             <button
@@ -271,211 +392,193 @@ export default function PygameGames() {
               disabled={!hasNext}
             >
               <span className="nav-text">다음</span>
-              <span className="nav-emoji">➡️</span>
+              <span className="nav-emoji"><i className="fi fi-rr-angle-right"></i></span>
             </button>
           </div>
 
           <div className="header-right-section">
+            {/* 테마 선택 드롭다운 */}
+            <ThemeDropdown />
+
             {/* 학습 메뉴 드롭다운 */}
-            <div className="dropdown">
-              <button className="nav-link dropdown-toggle">
-                🎮 학습 메뉴 ▼
-              </button>
-              <div className="dropdown-menu">
-                <a href="https://tt.hancomtaja.com/ko" target="_blank" rel="noopener noreferrer" className="dropdown-item">
-                  ⌨️ 한컴 타자 연습
-                </a>
-                <a href="/python" className="dropdown-item">
-                  🐍 파이썬 학습
-                </a>
-                <a href="/pygame" className="dropdown-item">
-                  📚 파이게임 기초 문법
-                </a>
-                <a href="/pygame-games" className="dropdown-item">
-                  🎮 파이게임 만들기
-                </a>
-                <div className="dropdown-item disabled">
-                  📊 데이터 분석과 시각화 <span className="badge-coming-soon">준비중</span>
-                </div>
-                <div className="dropdown-item disabled">
-                  🤖 AI 코딩 <span className="badge-coming-soon">준비중</span>
-                </div>
-              </div>
-            </div>
+            <LearningMenuDropdown />
 
             <a href="/admin/login" className="admin-login-link" title="관리자 로그인">
-              🔐
+              <i className="fi fi-rr-lock"></i>
             </a>
           </div>
         </div>
       </header>
 
       <div className="learning-container">
-        {/* Left Panel - Activity Info & Example Code */}
-        <aside className="left-panel">
-          {/* Activity Info */}
-          <div className="activity-info-box">
-            <div className="activity-header">
-              <h2 className="activity-main-title">
-                {currentActivity.id}. {currentActivity.title}
-                <span className={`difficulty-badge ${currentActivity.difficulty}`}>
-                  {currentActivity.difficulty}
-                </span>
-              </h2>
-            </div>
-            <p className="activity-description">{currentActivity.description}</p>
-
-            <div className="concepts">
-              <strong>📚 학습 개념:</strong>
-              {currentActivity.concepts.map((concept, index) => {
-                const explanation = gameConceptExplanations[concept];
-                return (
-                  <span
-                    key={index}
-                    className="concept-tag"
-                    onMouseEnter={() => setActiveTooltip(index)}
-                    onMouseLeave={() => setActiveTooltip(null)}
-                    style={{ position: 'relative', cursor: 'help' }}
-                  >
-                    {concept}
-                    {activeTooltip === index && explanation && (
-                      <>
-                        <div
-                          style={{
-                            position: 'fixed',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: 'rgba(0, 0, 0, 0.3)',
-                            zIndex: 9999,
-                          }}
-                          onClick={() => setActiveTooltip(null)}
-                        />
-                        <div
-                          style={{
-                            position: 'fixed',
-                            left: '50%',
-                            top: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            padding: '10px 14px',
-                            background: '#2d3748',
-                            color: 'white',
-                            borderRadius: '8px',
-                            fontSize: '0.9rem',
-                            whiteSpace: 'normal',
-                            width: '600px',
-                            maxWidth: '90vw',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                            zIndex: 10000,
-                            lineHeight: '1.5',
-                          }}
-                        >
-                          {explanation}
-                        </div>
-                      </>
-                    )}
-                  </span>
-                );
-              })}
-            </div>
-
-            <div className="hints-section">
-              <strong>💡 힌트:</strong>
-              <ul>
-                {currentActivity.hints.map((hint, index) => (
-                  <li key={index}>{hint}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* Example Code */}
-          <div className="example-code-section">
-            <div className="example-header">
-              <h3>📝 예제 코드</h3>
-              <button onClick={handleCopyCode} className="copy-button">
-                {copyButtonText}
-              </button>
-            </div>
-            <pre className="example-code-with-lines">
-              {currentActivity.exampleCode.split('\n').map((line, index) => (
-                <div key={index} className="code-line">
-                  <span className="line-number">{index + 1}</span>
-                  <span className="line-content">{line}</span>
-                </div>
-              ))}
-            </pre>
-          </div>
-        </aside>
-
-        {/* Right Panel - Code Editor & Output */}
-        <main className="right-panel">
-          {/* Code Editor */}
-          <section className="code-editor-section">
-            <div className="section-header">
-              <h3>💻 코드 에디터</h3>
-            </div>
-            <Editor
-              height="400px"
-              defaultLanguage="python"
-              value={code}
-              onChange={(value) => setCode(value || '')}
-              theme="vs-dark"
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                lineNumbers: 'on',
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-              }}
-            />
-            <div className="run-button-container">
+        {/* Activity Info - Full Width */}
+        <div className="activity-info-box">
+          <div className="activity-header">
+            <h2 className="activity-main-title">
+              {currentActivity.id}. {currentActivity.title}
+              <span className={`difficulty-badge ${currentActivity.difficulty}`}>
+                {currentActivity.difficulty}
+              </span>
+            </h2>
+            <div className="progress-controls">
               <button
-                onClick={handleRunCode}
-                disabled={isRunning}
-                className="run-button-center"
-                title="코드 실행 (Ctrl+Enter)"
+                className="progress-info"
+                onClick={() => setShowCurriculumModal(true)}
+                title="전체 학습 진행 상황 보기"
               >
-                {isRunning ? '⏳ 실행 중...' : '▶️ 실행'}
+                {currentActivityNumber} / {totalActivities} 완료
+              </button>
+              <button
+                className="reset-progress-button"
+                onClick={() => {
+                  if (window.confirm('코드와 실행 결과를 초기화하시겠습니까?')) {
+                    setCode('');
+                    setOutput('');
+                    setGameImage(null);
+                    setHasError(false);
+                    toast.success('초기화되었습니다.');
+                  }
+                }}
+                title="코드 및 결과 초기화"
+              >
+                <i className="fi fi-rr-refresh"></i> 학습 초기화
               </button>
             </div>
-          </section>
+          </div>
+          <p className="activity-description">{currentActivity.description}</p>
 
-          {/* Output */}
-          <section className="output-section">
-            <div className="output-header">
-              <span>🎮 게임 실행 결과</span>
-              {hasError && (
-                <button onClick={handleReportError} className="report-error-button">
-                  🐛 오류 보고
+          <div className="concepts">
+            <strong><i className="fi fi-rr-book"></i> 학습 개념:</strong>
+            {currentActivity.concepts.map((concept, index) => {
+              const explanation = gameConceptExplanations[concept];
+              return (
+                <span
+                  key={index}
+                  className="concept-tag"
+                  onMouseEnter={() => setActiveTooltip(index)}
+                  onMouseLeave={() => setActiveTooltip(null)}
+                  style={{ position: 'relative', cursor: 'help' }}
+                >
+                  {concept}
+                  {activeTooltip === index && explanation && (
+                    <span
+                      className="concept-tooltip"
+                      style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        marginBottom: '10px',
+                        padding: '10px 14px',
+                        background: '#2d3748',
+                        color: 'white',
+                        borderRadius: '8px',
+                        fontSize: '0.9rem',
+                        whiteSpace: 'normal',
+                        width: '300px',
+                        maxWidth: '90vw',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                        zIndex: 10000,
+                        lineHeight: '1.5',
+                      }}
+                    >
+                      {explanation}
+                    </span>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+
+          <div className="hints-section">
+            <strong><i className="fi fi-rr-lightbulb-on"></i> 힌트:</strong>
+            <ul>
+              {currentActivity.hints.map((hint, index) => (
+                <li key={index}>{hint}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Editor Row - Example Code and Code Editor Side by Side */}
+        <div className="editor-row">
+          {/* Left Panel - Example Code */}
+          <div className="left-panel">
+            <div className="example-code-section" ref={exampleCodeRef}>
+              <div className="example-header">
+                <h3><i className="fi fi-rr-document"></i> 예제 코드</h3>
+                <button onClick={handleCopyCode} className="copy-button">
+                  {copyButtonText}
                 </button>
-              )}
-            </div>
-
-            {gameImage ? (
-              <div className="game-result">
-                <img
-                  src={gameImage}
-                  alt="Game Screenshot"
-                  className="pygame-screenshot"
-                />
-                <pre className="output-content">{output}</pre>
               </div>
-            ) : (
-              <pre className="output-content">
-                {output || '▶️ 실행 버튼을 클릭하여 게임을 실행하세요!\n\n게임 화면이 여기에 표시됩니다.'}
+              <pre className="example-code-with-lines">
+                {currentActivity.exampleCode.split('\n').map((line, index) => (
+                  <div key={index} className="code-line">
+                    <span className="line-number">{index + 1}</span>
+                    <span className="line-content">{line}</span>
+                  </div>
+                ))}
               </pre>
-            )}
-          </section>
-        </main>
-      </div>
+            </div>
+          </div>
+
+          {/* Right Panel - Code Editor */}
+          <div className="right-panel">
+            <div className="code-editor-section">
+              <div className="section-header">
+                <h3><i className="fi fi-rr-laptop-code"></i> 코드 에디터</h3>
+                <div className="header-buttons">
+                  <button
+                    onClick={handleRunCode}
+                    disabled={isRunning || isLaunchingNewWindow}
+                    className="header-run-button"
+                    title="코드 실행"
+                  >
+                    {isRunning ? <><i className="fi fi-rr-spinner"></i> 실행 중...</> : <><i className="fi fi-rr-play"></i> 실행</>}
+                  </button>
+                  {gameImage && (
+                    <button
+                      onClick={handleRunInNewWindow}
+                      disabled={isRunning || isLaunchingNewWindow}
+                      className="header-run-button header-run-button-alt"
+                      title="새 창에서 실시간 게임 실행"
+                    >
+                      {isLaunchingNewWindow ? <><i className="fi fi-rr-spinner"></i> 시작 중...</> : <><i className="fi fi-rr-display"></i> 새 창</>}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <Editor
+                height={`${Math.max(200, exampleCodeHeight - 60)}px`}
+                defaultLanguage="python"
+                value={code}
+                onChange={(value) => setCode(value || '')}
+                theme="vs-dark"
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 16,
+                  lineNumbers: 'on',
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  cursorSurroundingLines: 3,
+                  cursorSurroundingLinesStyle: 'all',
+                  scrollbar: {
+                    vertical: 'auto',
+                    horizontal: 'auto',
+                  },
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        </div>
 
       {/* 오류 보고 모달 */}
       {showErrorModal && (
         <div className="modal-overlay" onClick={() => setShowErrorModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>🐛 오류 보고</h2>
+            <h2><i className="fi fi-rr-bug"></i> 오류 보고</h2>
             <p>아래 내용을 확인하고 추가 설명이 필요하면 수정해주세요.</p>
             <textarea
               value={errorDescription}
@@ -499,6 +602,78 @@ export default function PygameGames() {
           </div>
         </div>
       )}
+
+      {/* 커리큘럼 선택 모달 */}
+      {showCurriculumModal && (
+        <div className="modal-overlay" onClick={() => setShowCurriculumModal(false)}>
+          <div className="modal-content curriculum-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2><i className="fi fi-rr-book-alt"></i> 파이게임 만들기 커리큘럼</h2>
+              <button className="modal-close" onClick={() => setShowCurriculumModal(false)}><i className="fi fi-rr-cross-small"></i></button>
+            </div>
+            <div className="modal-body">
+              <div className="progress-summary">
+                <div className="progress-stat">
+                  <span className="stat-label">현재 진행</span>
+                  <span className="stat-value">{currentActivityNumber} / {totalActivities}</span>
+                </div>
+              </div>
+              <div className="levels-list">
+                {pygameGamesCurriculum.map((level, levelIndex) => (
+                  <div
+                    key={levelIndex}
+                    className={`level-section ${levelIndex === currentLevelIndex ? 'current-level' : ''}`}
+                  >
+                    <div className="level-header">
+                      <h3>Level {level.level}: {level.title}</h3>
+                      <span className="level-progress">
+                        {level.activities.length}개 활동
+                      </span>
+                    </div>
+                    <div className="activities-grid">
+                      {level.activities.map((activity, activityIndex) => {
+                        const isCurrent = levelIndex === currentLevelIndex && activityIndex === currentActivityIndex;
+                        return (
+                          <button
+                            key={activity.id}
+                            className={`activity-card ${isCurrent ? 'current' : ''}`}
+                            onClick={() => {
+                              setCurrentLevelIndex(levelIndex);
+                              setCurrentActivityIndex(activityIndex);
+                              setShowCurriculumModal(false);
+                            }}
+                          >
+                            <div className="activity-card-header">
+                              <span className="activity-number">{activity.id}</span>
+                              {isCurrent && <span className="activity-current-badge">현재</span>}
+                            </div>
+                            <div className="activity-card-title">{activity.title}</div>
+                            <span className={`difficulty-badge ${activity.difficulty}`}>
+                              {activity.difficulty}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Output Modal */}
+      <OutputModal
+        isOpen={showOutputModal}
+        onClose={() => setShowOutputModal(false)}
+        output={output}
+        isRunning={isRunning}
+        gameImage={gameImage}
+        errorInfo={hasError ? { message: output, code: code } : null}
+        level={`Level ${currentLevel.level}: ${currentLevel.title}`}
+        activity={`${currentActivity.id} - ${currentActivity.title}`}
+      />
 
       <Footer />
     </div>

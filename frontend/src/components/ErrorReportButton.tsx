@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { API_ENDPOINTS } from '../config/api';
 import './ErrorReportButton.css';
 
@@ -44,27 +45,16 @@ export default function ErrorReportButton({ errorInfo, level, activity }: ErrorR
       // 중복 오류인 경우
       if (data.duplicate) {
         const existingError = data.existing_error;
-        const createdDate = new Date(existingError.created_at).toLocaleString('ko-KR');
-        const statusText = existingError.resolved ? '✅ 해결됨' : '⏳ 처리 중';
+        const statusText = existingError.resolved ? '해결됨' : '처리 중';
 
-        alert(
-          `⚠️ 이미 접수된 오류입니다.\n\n` +
-          `📋 오류 ID: #${existingError.id}\n` +
-          `📅 최초 접수일: ${createdDate}\n` +
-          `📊 상태: ${statusText}\n\n` +
-          `동일한 오류가 이미 보고되어 처리 중입니다.`
-        );
+        toast.info(`이미 접수된 오류입니다. (ID: #${existingError.id}, 상태: ${statusText})`);
       } else {
         // 새로운 오류 접수 성공
-        alert(
-          `✅ 오류 보고가 성공적으로 전송되었습니다!\n\n` +
-          `📋 오류 ID: #${data.error_id}\n` +
-          `감사합니다! 빠른 시일 내에 확인하겠습니다.`
-        );
+        toast.success(`오류 보고 완료! (ID: #${data.error_id}) 감사합니다!`);
       }
     } catch (error) {
       console.error('오류 보고 전송 실패:', error);
-      alert('❌ 오류 보고 전송에 실패했습니다.\n\n백엔드 서버가 실행 중인지 확인해주세요.');
+      toast.error('오류 보고 전송에 실패했습니다. 백엔드 서버를 확인해주세요.');
     } finally {
       setSending(false);
     }

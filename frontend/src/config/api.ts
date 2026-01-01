@@ -1,5 +1,6 @@
 // API 설정
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+export const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
 
 // API 엔드포인트
 export const API_ENDPOINTS = {
@@ -15,12 +16,36 @@ export const API_ENDPOINTS = {
 
   // Pygame
   pygameExecute: `${API_BASE_URL}/api/pygame/execute`,
+  pygameCreateSession: `${API_BASE_URL}/api/pygame/create-session`,
+  pygameToHtml: `${API_BASE_URL}/api/pygame/to-html`,
 
   // 오류 보고
   sendErrorReport: `${API_BASE_URL}/api/error-report`,
 
   // 검색
   search: `${API_BASE_URL}/api/search`,
+
+  // Analytics - 추적
+  analyticsSession: `${API_BASE_URL}/api/analytics/session`,
+  analyticsSessionEnd: `${API_BASE_URL}/api/analytics/session-end`,
+  analyticsPageView: `${API_BASE_URL}/api/analytics/page-view`,
+  analyticsPageLeave: `${API_BASE_URL}/api/analytics/page-leave`,
+  analyticsCodeExecution: `${API_BASE_URL}/api/analytics/code-execution`,
+  analyticsProgress: `${API_BASE_URL}/api/analytics/progress`,
+
+  // Analytics - 조회 (관리자)
+  analyticsOverview: `${API_BASE_URL}/api/analytics/overview`,
+  analyticsDailyVisitors: `${API_BASE_URL}/api/analytics/daily-visitors`,
+  analyticsPageViews: `${API_BASE_URL}/api/analytics/page-views`,
+  analyticsDevices: `${API_BASE_URL}/api/analytics/devices`,
+  analyticsCodeStats: `${API_BASE_URL}/api/analytics/code-stats`,
+  analyticsRecentActivity: `${API_BASE_URL}/api/analytics/recent-activity`,
+  analyticsHourlyActivity: `${API_BASE_URL}/api/analytics/hourly-activity`,
+};
+
+// WebSocket 엔드포인트
+export const WS_ENDPOINTS = {
+  pygameStream: (sessionId: string) => `${WS_BASE_URL}/ws/pygame/${sessionId}`,
 };
 
 // API 헬퍼 함수

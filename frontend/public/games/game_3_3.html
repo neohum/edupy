@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduPy Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .game-header {
+            color: #fff;
+            padding: 15px 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #16213e;
+            border-radius: 10px 10px 0 0;
+            width: 600px;
+        }
+        .game-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .fps-counter {
+            margin-left: auto;
+            font-size: 14px;
+            color: #4ade80;
+        }
+        #gameCanvas {
+            border: 3px solid #16213e;
+            background: #000;
+            display: block;
+        }
+        .controls-info {
+            color: #888;
+            padding: 15px;
+            font-size: 13px;
+            background: #16213e;
+            border-radius: 0 0 10px 10px;
+            width: 600px;
+            text-align: center;
+        }
+        kbd {
+            background: #333;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 0 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-header">
+        <span class="game-title">🎮 EduPy Game</span>
+        <span class="fps-counter" id="fpsCounter">0 FPS</span>
+    </div>
+    <canvas id="gameCanvas" width="600" height="800"></canvas>
+    <div class="controls-info">
+        <kbd>Arrow Keys</kbd> / <kbd>WASD</kbd> Move &nbsp;&nbsp;
+        <kbd>Space</kbd> Action &nbsp;&nbsp;
+        <kbd>ESC</kbd> Close
+    </div>
+
+    <script>
+// Pygame-like JavaScript API
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// 색상 상수
+const BLACK = '#000000';
+const WHITE = '#FFFFFF';
+const RED = '#FF0000';
+const GREEN = '#00FF00';
+const BLUE = '#0000FF';
+const YELLOW = '#FFFF00';
+const CYAN = '#00FFFF';
+const MAGENTA = '#FF00FF';
+const ORANGE = '#FFA500';
+const PURPLE = '#800080';
+const PINK = '#FFC0CB';
+const GRAY = '#808080';
+const GREY = '#808080';
+
+// RGB 색상 변환
+function rgb(r, g, b) {
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+// 키보드 상태
+let keys = {};
+const K_UP = 'ArrowUp';
+const K_DOWN = 'ArrowDown';
+const K_LEFT = 'ArrowLeft';
+const K_RIGHT = 'ArrowRight';
+const K_SPACE = 'Space';
+const K_RETURN = 'Enter';
+const K_ESCAPE = 'Escape';
+const K_a = 'KeyA'; const K_b = 'KeyB'; const K_c = 'KeyC'; const K_d = 'KeyD';
+const K_e = 'KeyE'; const K_f = 'KeyF'; const K_g = 'KeyG'; const K_h = 'KeyH';
+const K_i = 'KeyI'; const K_j = 'KeyJ'; const K_k = 'KeyK'; const K_l = 'KeyL';
+const K_m = 'KeyM'; const K_n = 'KeyN'; const K_o = 'KeyO'; const K_p = 'KeyP';
+const K_q = 'KeyQ'; const K_r = 'KeyR'; const K_s = 'KeyS'; const K_t = 'KeyT';
+const K_u = 'KeyU'; const K_v = 'KeyV'; const K_w = 'KeyW'; const K_x = 'KeyX';
+const K_y = 'KeyY'; const K_z = 'KeyZ';
+
+document.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+        e.preventDefault();
+    }
+    // Typing game: check if pressed key matches a falling letter
+    if (e.code.startsWith('Key') && typeof letters !== 'undefined') {
+        const pressedLetter = e.code.replace('Key', '');
+        for (let i = 0; i < letters.length; i++) {
+            if (letters[i][0] === pressedLetter) {
+                score = (typeof score !== 'undefined') ? score + 1 : 1;
+                letters.splice(i, 1);
+                letters.push(new_letter());
+                break;
+            }
+        }
+    }
+    if (e.code === 'Escape') {
+        running = false;
+        window.close();
+    }
+});
+
+document.addEventListener('keyup', (e) => {
+    keys[e.code] = false;
+});
+
+// Pygame-like draw functions
+const draw = {
+    rect: function(surface, color, rect, width = 0) {
+        let x, y, w, h;
+        if (rect instanceof Rect) {
+            x = rect.x; y = rect.y; w = rect.width; h = rect.height;
+        } else {
+            [x, y, w, h] = rect;
+        }
+        if (width === 0) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, w, h);
+        } else {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.strokeRect(x, y, w, h);
+        }
+    },
+    circle: function(surface, color, center, radius, width = 0) {
+        const [x, y] = center;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        if (width === 0) {
+            ctx.fillStyle = color;
+            ctx.fill();
+        } else {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.stroke();
+        }
+    },
+    line: function(surface, color, start, end, width = 1) {
+        const [x1, y1] = start;
+        const [x2, y2] = end;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.stroke();
+    },
+    ellipse: function(surface, color, rect, width = 0) {
+        const [x, y, w, h] = rect;
+        ctx.beginPath();
+        ctx.ellipse(x + w/2, y + h/2, w/2, h/2, 0, 0, Math.PI * 2);
+        if (width === 0) {
+            ctx.fillStyle = color;
+            ctx.fill();
+        } else {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.stroke();
+        }
+    },
+    polygon: function(surface, color, points, width = 0) {
+        if (points.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(points[0][0], points[0][1]);
+        for (let i = 1; i < points.length; i++) {
+            ctx.lineTo(points[i][0], points[i][1]);
+        }
+        ctx.closePath();
+        if (width === 0) {
+            ctx.fillStyle = color;
+            ctx.fill();
+        } else {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.stroke();
+        }
+    }
+};
+
+// Screen fill
+function fill(color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+// Key pressed check
+function get_pressed() {
+    return keys;
+}
+
+// Random functions
+function randint(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function choice(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// pygame.Rect 클래스
+class Rect {
+    constructor(x, y, width, height) {
+        if (Array.isArray(x)) {
+            // Rect([x, y, w, h]) 형태
+            [this.x, this.y, this.width, this.height] = x;
+        } else {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+        }
+    }
+
+    colliderect(other) {
+        return this.x < other.x + other.width &&
+               this.x + this.width > other.x &&
+               this.y < other.y + other.height &&
+               this.y + this.height > other.y;
+    }
+
+    get left() { return this.x; }
+    set left(v) { this.x = v; }
+    get right() { return this.x + this.width; }
+    set right(v) { this.x = v - this.width; }
+    get top() { return this.y; }
+    set top(v) { this.y = v; }
+    get bottom() { return this.y + this.height; }
+    set bottom(v) { this.y = v - this.height; }
+    get centerx() { return this.x + this.width / 2; }
+    get centery() { return this.y + this.height / 2; }
+}
+
+// pygame.font 모듈
+const pygame_font = {
+    SysFont: function(name, size) {
+        return new Font(name, size);
+    }
+};
+let font = pygame_font;  // 사용자 코드에서 재할당 가능
+
+class Font {
+    constructor(name, size) {
+        this.name = name || 'Arial';
+        this.size = size || 24;
+    }
+
+    render(text, antialias, color) {
+        return new TextSurface(text, this.size, color);
+    }
+}
+
+class TextSurface {
+    constructor(text, size, color) {
+        this.text = text;
+        this.size = size;
+        this.color = color;
+    }
+}
+
+// screen.blit 함수
+function blit(surface, pos) {
+    if (surface instanceof TextSurface) {
+        ctx.font = `${surface.size}px Arial`;
+        ctx.fillStyle = surface.color;
+        ctx.fillText(surface.text, pos[0], pos[1] + surface.size);
+    }
+}
+
+// 화면 크기 상수
+let WIDTH = 600;
+let HEIGHT = 800;
+
+// 기본 폰트 객체
+let gameFont = font.SysFont(null, 40);
+
+// 내장 함수
+function max(...args) {
+    if (args.length === 1 && Array.isArray(args[0])) {
+        return Math.max(...args[0]);
+    }
+    return Math.max(...args);
+}
+
+function min(...args) {
+    if (args.length === 1 && Array.isArray(args[0])) {
+        return Math.min(...args[0]);
+    }
+    return Math.min(...args);
+}
+
+function abs(x) {
+    return Math.abs(x);
+}
+
+function int(x) {
+    return Math.floor(x);
+}
+
+function len(arr) {
+    return arr.length;
+}
+
+// FPS tracking
+let frameCount = 0;
+let lastFpsUpdate = performance.now();
+const fpsCounter = document.getElementById('fpsCounter');
+
+function updateFPS() {
+    frameCount++;
+    const now = performance.now();
+    if (now - lastFpsUpdate >= 1000) {
+        fpsCounter.textContent = frameCount + ' FPS';
+        frameCount = 0;
+        lastFpsUpdate = now;
+    }
+}
+
+// Game variables
+let running = true;
+const screen = { width: 800, height: 600 };
+
+// User game code
+canvas.width = 800; canvas.height = 600;
+WIDTH = 800; HEIGHT = 600;
+let small_font = font.SysFont(null, 30);
+font = font.SysFont(null, 60);
+function new_letter() {
+    let ch = choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""));
+    let x = randint(50, WIDTH - 50);
+    let y = -50;
+    let speed = randint(2, 5);
+    return [ch, x, y, speed];
+}
+let letters = Array.from({length: 3}, () => new_letter());
+let score = 0;
+let missed = 0;
+running = true;
+// main check removed;
+
+function update() {
+for (let lt of letters) {
+    lt[2] += lt[3];
+    if (lt[2] > HEIGHT) {
+        missed += 1;
+        { const _idx = letters.indexOf(lt); if(_idx > -1) letters.splice(_idx, 1); }
+        letters.push(new_letter());
+        if (missed >= 10) {
+            running = false;
+        }
+    }
+}
+fill(BLACK);
+for (let lt of letters) {
+    const [ch, x, y, _unused] = lt;
+    let text = font.render(ch, true, WHITE);
+    blit(text, [x, y]);
+}
+let score_text = small_font.render(`Score: ${score}`, true, WHITE);
+let miss_text = small_font.render(`Missed: ${missed}/10`, true, WHITE);
+blit(score_text, [10, 10]);
+blit(miss_text, [10, 40]);
+}
+
+// Game loop
+const targetFPS = 60;
+const frameTime = 1000 / targetFPS;
+let lastFrameTime = performance.now();
+
+function gameLoop() {
+    if (!running) return;
+
+    const now = performance.now();
+    const delta = now - lastFrameTime;
+
+    if (delta >= frameTime) {
+        lastFrameTime = now - (delta % frameTime);
+
+        try {
+            if (typeof update === 'function') {
+                update();
+            }
+            updateFPS();
+        } catch (e) {
+            console.error('Game error:', e);
+            running = false;
+        }
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Start game
+if (typeof init === 'function') {
+    init();
+}
+gameLoop();
+    </script>
+</body>
+</html>

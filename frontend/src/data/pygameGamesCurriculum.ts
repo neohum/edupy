@@ -431,8 +431,13 @@ def main():
             player_x -= player_speed
         if keys[pygame.K_RIGHT]:
             player_x += player_speed
+        if keys[pygame.K_UP]:
+            player_y -= player_speed
+        if keys[pygame.K_DOWN]:
+            player_y += player_speed
 
         player_x = max(0, min(WIDTH - player_w, player_x))
+        player_y = max(0, min(HEIGHT - player_h, player_y))
 
         player_rect = pygame.Rect(player_x, player_y, player_w, player_h)
 
@@ -464,9 +469,9 @@ def main():
 if __name__ == "__main__":
     main()`,
         hints: [
+          '방향키로 상하좌우 이동이 가능합니다',
           '적이 좌우로 왕복 운동을 합니다',
           '벽에 닿으면 방향이 바뀝니다',
-          '각 적마다 다른 속도로 움직입니다',
         ],
         concepts: ['방향 전환', '왕복 운동', '경계 충돌'],
       },
@@ -1349,13 +1354,6 @@ export const gameConceptExplanations: { [key: string]: string } = {
     - 이벤트 처리 → 게임 로직 → 화면 그리기
     - clock.tick(60) - 초당 60프레임으로 제한
     - pygame.display.flip() - 화면 업데이트
-  `,
-  '충돌 감지': `
-    충돌 감지 시스템:
-    - pygame.Rect(x, y, width, height) - 충돌 영역 정의
-    - colliderect() - 사각형 충돌 감지
-    - 플레이어와 적, 아이템 간 상호작용 구현
-    - 충돌 시 점수 증가, 게임 오버 등 처리
   `,
   '점수 시스템': `
     점수 시스템 구현:

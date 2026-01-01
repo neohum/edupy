@@ -43,6 +43,55 @@ export function usePyodide(): UsePyodideReturn {
           fullStdLib: false, // 전체 표준 라이브러리 로드하지 않음
         });
 
+        // 데이터 분석/AI에 필요한 패키지들 미리 로드
+        console.log('📦 필수 패키지 로딩 중...');
+        try {
+          await pyodideInstance.loadPackage(['numpy', 'pandas', 'matplotlib', 'micropip']);
+          console.log('✅ 패키지 로딩 완료: numpy, pandas, matplotlib');
+
+          // matplotlib 백엔드 설정 (Agg로 설정하여 GUI 없이 동작)
+          await pyodideInstance.runPythonAsync(`
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+plt.ioff()  # 인터랙티브 모드 끄기
+
+# plt.show()를 오버라이드하여 base64 이미지로 출력
+import io
+import base64
+
+_original_show = plt.show
+
+_matplotlib_output_callback = [None]  # 콜백 저장용 리스트 (mutable)
+
+def _custom_show(*args, **kwargs):
+    """plt.show()를 base64 이미지로 출력하도록 오버라이드"""
+    import matplotlib.pyplot as _plt
+    try:
+        fig = _plt.gcf()
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', dpi=100, bbox_inches='tight',
+                    facecolor='white', edgecolor='none')
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+        buf.close()
+        output_text = f'[MATPLOTLIB_IMAGE:{img_base64}]'
+        # 콜백이 설정되어 있으면 사용, 아니면 print 사용
+        if _matplotlib_output_callback[0] is not None:
+            _matplotlib_output_callback[0](output_text)
+        else:
+            print(output_text)
+        _plt.close(fig)
+    except Exception as e:
+        print(f'matplotlib 이미지 생성 오류: {e}')
+
+plt.show = _custom_show
+print('📊 Matplotlib 설정 완료')
+          `);
+        } catch (pkgError) {
+          console.warn('⚠️ 일부 패키지 로딩 실패:', pkgError);
+        }
+
         pyodideRef.current = pyodideInstance;
         setPyodide(pyodideInstance);
         setIsReady(true);
@@ -102,7 +151,65 @@ def custom_print(*args, sep=' ', end='\\n', **kwargs):
     js_print(output)
 
 builtins.print = custom_print
+
+# matplotlib 콜백 설정 (plt.show()가 js_print를 사용하도록)
+try:
+    _matplotlib_output_callback[0] = js_print
+except:
+    pass
   `);
+}
+
+/**
+ * 코드에서 필요한 패키지를 감지하고 로드하는 함수
+ */
+export async function loadRequiredPackages(pyodide: any, code: string): Promise<void> {
+  if (!pyodide) return;
+
+  // 코드에서 import 문 분석
+  const packageMap: { [key: string]: string } = {
+    'numpy': 'numpy',
+    'np': 'numpy',
+    'pandas': 'pandas',
+    'pd': 'pandas',
+    'matplotlib': 'matplotlib',
+    'plt': 'matplotlib',
+    'scipy': 'scipy',
+    'sklearn': 'scikit-learn',
+    'seaborn': 'seaborn',
+    'sns': 'seaborn',
+  };
+
+  const packagesToLoad: Set<string> = new Set();
+
+  // import 패턴 감지
+  const importPatterns = [
+    /import\s+(\w+)/g,
+    /from\s+(\w+)\s+import/g,
+    /import\s+(\w+)\s+as\s+\w+/g,
+  ];
+
+  for (const pattern of importPatterns) {
+    let match;
+    while ((match = pattern.exec(code)) !== null) {
+      const moduleName = match[1];
+      if (packageMap[moduleName]) {
+        packagesToLoad.add(packageMap[moduleName]);
+      }
+    }
+  }
+
+  // 필요한 패키지 로드
+  if (packagesToLoad.size > 0) {
+    const packages = Array.from(packagesToLoad);
+    console.log(`📦 추가 패키지 로딩: ${packages.join(', ')}`);
+    try {
+      await pyodide.loadPackage(packages);
+      console.log(`✅ 패키지 로딩 완료: ${packages.join(', ')}`);
+    } catch (error) {
+      console.warn('⚠️ 패키지 로딩 실패:', error);
+    }
+  }
 }
 
 /**

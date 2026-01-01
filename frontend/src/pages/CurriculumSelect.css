@@ -1,0 +1,789 @@
+.curriculum-select-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--theme-text, #f5f7fa) 0%, color-mix(in srgb, var(--theme-text, #e4e8eb) 90%, var(--theme-bg, #000)) 100%);
+}
+
+/* Header - Same as PythonLearning */
+.curriculum-select-page .header {
+  background: linear-gradient(135deg, var(--theme-accent) 0%, var(--theme-secondary) 100%);
+  color: white;
+  padding: 1rem 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.curriculum-select-page .header .container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.curriculum-select-page .logo {
+  flex-shrink: 0;
+}
+
+.curriculum-select-page .logo a {
+  color: white;
+  text-decoration: none;
+  font-size: 1.5rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.curriculum-select-page .logo-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--theme-accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+.curriculum-select-page .logo:hover .logo-icon {
+  background: white;
+  transform: rotate(-5deg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Page Title in Header */
+.curriculum-select-page .page-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  justify-content: center;
+}
+
+.curriculum-select-page .page-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.curriculum-select-page .header-right-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+/* Navigation Links */
+.curriculum-select-page .nav-link {
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.curriculum-select-page .nav-link:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.curriculum-select-page .home-link {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.curriculum-select-page .home-link:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Admin Login Link */
+.curriculum-select-page .admin-login-link {
+  font-size: 1.5rem;
+  color: white;
+  text-decoration: none;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.curriculum-select-page .admin-login-link:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+/* Main Content */
+.curriculum-main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* Hero Section */
+.curriculum-hero {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-top: 1rem;
+}
+
+.curriculum-hero h1 {
+  font-size: 2.5rem;
+  color: var(--theme-bg, #2d3748);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.curriculum-hero h1 i {
+  color: var(--theme-accent, #667eea);
+}
+
+.curriculum-hero p {
+  font-size: 1.2rem;
+  color: color-mix(in srgb, var(--theme-bg, #718096) 70%, var(--theme-text, #fff));
+}
+
+.curriculum-hero .hero-description {
+  font-size: 1.1rem;
+  color: var(--theme-bg, #4a5568);
+  margin: 0;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  display: inline-block;
+}
+
+/* Type Selector */
+.type-selector {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 3rem;
+}
+
+.type-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: 2px solid color-mix(in srgb, var(--theme-bg, #e2e8f0) 20%, var(--theme-text, #fff));
+  border-radius: 12px;
+  background: var(--theme-text, white);
+  color: var(--theme-bg, #4a5568);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.type-btn:hover {
+  border-color: var(--theme-accent, #667eea);
+  color: var(--theme-accent, #667eea);
+}
+
+.type-btn.active {
+  background: linear-gradient(135deg, var(--theme-accent, #667eea) 0%, var(--theme-secondary, #764ba2) 100%);
+  color: var(--theme-text, white);
+  border-color: transparent;
+  box-shadow: 0 4px 15px color-mix(in srgb, var(--theme-accent, #667eea) 40%, transparent);
+}
+
+.type-btn i {
+  font-size: 1.3rem;
+}
+
+/* Curriculum Cards */
+.curriculum-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+  margin-bottom: 4rem;
+}
+
+.curriculum-card {
+  background: var(--theme-text, white);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.curriculum-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.curriculum-card .card-header {
+  padding: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  color: var(--theme-text, white);
+}
+
+.curriculum-card .grade-badge {
+  background: rgba(255, 255, 255, 0.25);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+}
+
+.curriculum-card .card-header i {
+  font-size: 3rem;
+  opacity: 0.9;
+}
+
+.curriculum-card .card-body {
+  padding: 1.5rem 2rem;
+}
+
+.curriculum-card h3 {
+  font-size: 1.4rem;
+  color: var(--theme-bg, #2d3748);
+  margin-bottom: 0.5rem;
+}
+
+.curriculum-card .description {
+  color: color-mix(in srgb, var(--theme-bg, #718096) 60%, var(--theme-text, #fff));
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.curriculum-card .stats {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.curriculum-card .stat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: color-mix(in srgb, var(--theme-bg, #4a5568) 70%, var(--theme-text, #fff));
+  font-size: 0.9rem;
+}
+
+.curriculum-card .stat i {
+  color: var(--theme-accent, #667eea);
+}
+
+.curriculum-card .topics h4 {
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--theme-bg, #a0aec0) 50%, var(--theme-text, #fff));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.curriculum-card .topics ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.curriculum-card .topics li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--theme-bg, #4a5568) 70%, var(--theme-text, #fff));
+}
+
+.curriculum-card .topics li i {
+  color: #48bb78;
+  font-size: 0.8rem;
+}
+
+.curriculum-card .topics li.more {
+  color: color-mix(in srgb, var(--theme-bg, #a0aec0) 50%, var(--theme-text, #fff));
+  font-style: italic;
+}
+
+.curriculum-card .card-footer {
+  padding: 1.5rem 2rem;
+  border-top: 1px solid color-mix(in srgb, var(--theme-bg, #e2e8f0) 20%, var(--theme-text, #fff));
+}
+
+.curriculum-card .start-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--theme-accent, #667eea) 0%, var(--theme-secondary, #764ba2) 100%);
+  color: var(--theme-text, white);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.curriculum-card .start-btn:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 15px color-mix(in srgb, var(--theme-accent, #667eea) 40%, transparent);
+}
+
+/* Grade Level Specific Styles */
+.curriculum-card.elementary .card-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.curriculum-card.middle .card-header {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.curriculum-card.high .card-header {
+  background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+}
+
+/* Info Section */
+.info-section {
+  background: var(--theme-text, white);
+  border-radius: 16px;
+  padding: 2.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.info-section h2 {
+  font-size: 1.5rem;
+  color: var(--theme-bg, #2d3748);
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.info-section h2 i {
+  color: var(--theme-accent, #667eea);
+}
+
+.info-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.info-card {
+  padding: 1.5rem;
+  border-radius: 12px;
+  border-left: 4px solid;
+}
+
+.info-card.elementary {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border-left-color: #667eea;
+}
+
+.info-card.middle {
+  background: linear-gradient(135deg, rgba(17, 153, 142, 0.1) 0%, rgba(56, 239, 125, 0.1) 100%);
+  border-left-color: #11998e;
+}
+
+.info-card.high {
+  background: linear-gradient(135deg, rgba(238, 9, 121, 0.1) 0%, rgba(255, 106, 0, 0.1) 100%);
+  border-left-color: #ee0979;
+}
+
+.info-card h3 {
+  font-size: 1.1rem;
+  color: var(--theme-bg, #2d3748);
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.info-card.elementary h3 i { color: #667eea; }
+.info-card.middle h3 i { color: #11998e; }
+.info-card.high h3 i { color: #ee0979; }
+
+.info-card p {
+  color: color-mix(in srgb, var(--theme-bg, #4a5568) 70%, var(--theme-text, #fff));
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* Dropdown Styles - Same as PythonLearning */
+.curriculum-select-page .dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.curriculum-select-page .dropdown-toggle {
+  background: none;
+  border: none;
+  color: white;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.curriculum-select-page .dropdown-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.curriculum-select-page .dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: auto;
+  margin-top: 0.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  min-width: 240px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+  z-index: 1000;
+  overflow: visible;
+}
+
+.curriculum-select-page .dropdown:hover .dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.curriculum-select-page .dropdown-item {
+  display: block;
+  padding: 0.75rem 1.25rem;
+  color: #1a202c !important;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  white-space: nowrap;
+}
+
+.curriculum-select-page .dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.curriculum-select-page .dropdown-item:hover {
+  background: linear-gradient(135deg, var(--theme-accent) 0%, var(--theme-secondary) 100%);
+  color: white !important;
+  transform: translateX(5px);
+}
+
+/* 서브메뉴 스타일 */
+.curriculum-select-page .dropdown-submenu {
+  position: relative;
+}
+
+.curriculum-select-page .dropdown-item.has-submenu {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  cursor: pointer;
+  gap: 0.5rem;
+}
+
+.curriculum-select-page .dropdown-item.has-submenu span {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.curriculum-select-page .submenu-arrow {
+  font-size: 0.7rem;
+  transition: transform 0.2s;
+}
+
+.curriculum-select-page .dropdown-submenu:hover .submenu-arrow {
+  transform: translateX(-3px);
+}
+
+.curriculum-select-page .dropdown-submenu:hover > .dropdown-item.has-submenu {
+  background: linear-gradient(135deg, var(--theme-accent) 0%, var(--theme-secondary) 100%);
+  color: white !important;
+}
+
+.curriculum-select-page .submenu {
+  position: absolute;
+  right: calc(100% + 5px);
+  left: auto;
+  top: 0;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  min-width: 150px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(10px);
+  transition: all 0.25s ease;
+  z-index: 1002;
+  padding: 0.5rem 0;
+}
+
+.curriculum-select-page .dropdown-submenu:hover > .submenu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+
+.curriculum-select-page .submenu .dropdown-item {
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  border-bottom: none;
+}
+
+.curriculum-select-page .submenu .dropdown-item:hover {
+  transform: translateX(3px);
+}
+
+/* Help Section */
+.curriculum-select-page .help-section {
+  margin-top: 2rem;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.curriculum-select-page .help-header {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.curriculum-select-page .help-header:hover {
+  background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+  box-shadow: 0 4px 12px rgba(240, 147, 251, 0.4);
+}
+
+.curriculum-select-page .search-box {
+  padding: 0.75rem 1rem;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.curriculum-select-page .search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.curriculum-select-page .search-input:focus {
+  border-color: var(--theme-accent);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.curriculum-select-page .search-input::placeholder {
+  color: #a0aec0;
+}
+
+.curriculum-select-page .search-button {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, var(--theme-accent) 0%, var(--theme-secondary) 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  flex-shrink: 0;
+}
+
+.curriculum-select-page .search-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.curriculum-select-page .search-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.curriculum-select-page .help-links {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.curriculum-select-page .search-results-header {
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, var(--theme-accent) 0%, var(--theme-secondary) 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.curriculum-select-page .help-link {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.curriculum-select-page .help-link:hover {
+  background: #fff;
+  border-color: var(--theme-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.curriculum-select-page .link-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.curriculum-select-page .link-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.curriculum-select-page .link-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #2d3748;
+  margin-bottom: 0.25rem;
+}
+
+.curriculum-select-page .link-description {
+  font-size: 0.85rem;
+  color: #718096;
+  line-height: 1.4;
+}
+
+.curriculum-select-page .no-results {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #718096;
+  font-size: 0.9rem;
+}
+
+.curriculum-select-page .search-placeholder {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #a0aec0;
+  font-size: 0.95rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 8px;
+  margin: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .curriculum-hero h1 {
+    font-size: 1.8rem;
+  }
+
+  .type-selector {
+    flex-direction: column;
+  }
+
+  .type-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .curriculum-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .info-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .curriculum-select-page .help-section {
+    margin-top: 1.5rem;
+  }
+
+  .curriculum-select-page .search-box {
+    flex-direction: column;
+  }
+
+  .curriculum-select-page .search-input {
+    width: 100%;
+  }
+
+  .curriculum-select-page .search-button {
+    width: 100%;
+  }
+}

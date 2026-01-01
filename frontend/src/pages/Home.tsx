@@ -19,9 +19,9 @@ export default function Home() {
             <strong>회원가입 없이</strong> 바로 시작하세요!
           </p>
           <div className="hero-badges">
-            <span className="badge">✅ 회원가입 불필요</span>
-            <span className="badge">💾 자동 저장</span>
-            <span className="badge">🚀 즉시 시작</span>
+            <span className="badge"><i className="fi fi-rr-check"></i> 회원가입 불필요</span>
+            <span className="badge"><i className="fi fi-rr-disk"></i> 자동 저장</span>
+            <span className="badge"><i className="fi fi-rr-rocket"></i> 즉시 시작</span>
           </div>
         </div>
       </section>
@@ -34,7 +34,7 @@ export default function Home() {
           <div className="feature-grid">
             {/* Feature 1: 타이핑 연습 */}
             <div className="feature-card">
-              <div className="feature-icon">⌨️</div>
+              <div className="feature-icon"><i className="fi fi-rr-keyboard"></i></div>
               <h4>한컴 타자 연습</h4>
               <p>전문 타이핑 연습 사이트로 바로가기</p>
               <a
@@ -50,7 +50,7 @@ export default function Home() {
             {/* Feature 2: 파이썬 학습 */}
             <div className="feature-card featured">
               <div className="feature-badge">인기</div>
-              <div className="feature-icon">🐍</div>
+              <div className="feature-icon"><i className="fi fi-rr-code-simple"></i></div>
               <h4>파이썬 학습</h4>
               <p>기초부터 고급까지 단계별 학습</p>
               <ul className="feature-list">
@@ -64,7 +64,7 @@ export default function Home() {
 
             {/* Feature 3: 파이게임 기초 문법 학습 */}
             <div className="feature-card">
-              <div className="feature-icon">📚</div>
+              <div className="feature-icon"><i className="fi fi-rr-book-alt"></i></div>
               <h4>파이게임 기초 문법 학습</h4>
               <p>게임 개발에 필요한 파이썬 문법</p>
               <ul className="feature-list">
@@ -78,35 +78,37 @@ export default function Home() {
 
             {/* Feature 4: 데이터 분석과 시각화 */}
             <div className="feature-card">
-              <div className="feature-icon">📊</div>
+              <div className="feature-badge">NEW</div>
+              <div className="feature-icon"><i className="fi fi-rr-chart-histogram"></i></div>
               <h4>데이터 분석과 시각화</h4>
               <p>데이터를 분석하고 시각화하는 방법 학습</p>
               <ul className="feature-list">
-                <li>Pandas 데이터 분석</li>
-                <li>Matplotlib 시각화</li>
-                <li>NumPy 수치 연산</li>
-                <li>실전 데이터 프로젝트</li>
+                <li>초등: 리스트와 텍스트 그래프</li>
+                <li>중등: pandas와 matplotlib</li>
+                <li>고등: 통계 분석과 회귀</li>
+                <li>수준별 맞춤 커리큘럼</li>
               </ul>
-              <button className="btn btn-primary" disabled>준비 중</button>
+              <Link to="/data" className="btn btn-primary">시작하기</Link>
             </div>
 
             {/* Feature 5: AI 코딩 */}
             <div className="feature-card">
-              <div className="feature-icon">🤖</div>
+              <div className="feature-badge">NEW</div>
+              <div className="feature-icon"><i className="fi fi-rr-robot"></i></div>
               <h4>AI 코딩</h4>
               <p>인공지능과 머신러닝 기초 학습</p>
               <ul className="feature-list">
-                <li>머신러닝 기초 개념</li>
-                <li>TensorFlow/Keras 실습</li>
-                <li>이미지 분류 프로젝트</li>
-                <li>챗봇 만들기</li>
+                <li>초등: 조건문과 패턴 인식</li>
+                <li>중등: k-NN과 자연어처리</li>
+                <li>고등: 신경망과 딥러닝</li>
+                <li>수준별 맞춤 커리큘럼</li>
               </ul>
-              <button className="btn btn-primary" disabled>준비 중</button>
+              <Link to="/ai" className="btn btn-primary">시작하기</Link>
             </div>
 
             {/* Feature 6: 파이게임 만들기 */}
             <div className="feature-card">
-              <div className="feature-icon">🎮</div>
+              <div className="feature-icon"><i className="fi fi-rr-gamepad"></i></div>
               <h4>파이게임 만들기</h4>
               <p>나만의 게임을 만들어보세요</p>
               <ul className="feature-list">
@@ -128,25 +130,19 @@ export default function Home() {
           
           <div className="about-grid">
             <div className="about-item">
-              <div className="about-icon">🔒</div>
+              <div className="about-icon"><i className="fi fi-rr-lock"></i></div>
               <h5>프라이버시 보호</h5>
               <p>회원가입 없이 사용하며, 모든 데이터는 브라우저에만 저장됩니다</p>
             </div>
-            
+
             <div className="about-item">
-              <div className="about-icon">💾</div>
+              <div className="about-icon"><i className="fi fi-rr-disk"></i></div>
               <h5>자동 저장</h5>
               <p>학습 진행도가 자동으로 저장되어 언제든 이어서 학습할 수 있습니다</p>
             </div>
-            
+
             <div className="about-item">
-              <div className="about-icon">📤</div>
-              <h5>데이터 백업</h5>
-              <p>JSON 파일로 데이터를 내보내고 다른 기기에서 가져올 수 있습니다</p>
-            </div>
-            
-            <div className="about-item">
-              <div className="about-icon">⚡</div>
+              <div className="about-icon"><i className="fi fi-rr-bolt"></i></div>
               <h5>빠른 시작</h5>
               <p>복잡한 가입 절차 없이 클릭 한 번으로 바로 학습을 시작하세요</p>
             </div>

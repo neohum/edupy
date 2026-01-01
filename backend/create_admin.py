@@ -15,7 +15,7 @@ def main():
 
     # 관리자 계정 정보
     username = "neohum"
-    password = "min9610012@"
+    password = "min9610012@@"
 
     # 기존 계정 확인
     existing_user = get_admin_user(username)

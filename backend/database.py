@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from datetime import datetime
 from typing import List, Dict, Optional
@@ -5,7 +6,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-DATABASE_PATH = "edupy.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_PATH = os.path.join(BASE_DIR, "edupy.db")
 
 def get_db_connection():
     """데이터베이스 연결 생성"""
@@ -67,6 +69,9 @@ def init_database():
 
     conn.commit()
     conn.close()
+
+    # 분석 테이블 초기화
+    init_analytics_tables()
 
     logger.info("Database initialized successfully")
 
@@ -512,3 +517,504 @@ def update_admin_last_login(username: str) -> bool:
     finally:
         conn.close()
 
+# ==================== 분석 관련 함수 ====================
+
+def init_analytics_tables():
+    """분석 테이블 초기화"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 사용자 세션 테이블
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT UNIQUE NOT NULL,
+            user_agent TEXT,
+            device_type TEXT,
+            browser TEXT,
+            os TEXT,
+            screen_width INTEGER,
+            screen_height INTEGER,
+            start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            end_time DATETIME,
+            is_active BOOLEAN DEFAULT 1
+        )
+    """)
+
+    # 페이지 조회 테이블
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS page_views (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            page_path TEXT NOT NULL,
+            page_title TEXT,
+            referrer TEXT,
+            duration_seconds INTEGER DEFAULT 0,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # 코드 실행 기록 테이블
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS code_executions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            page_path TEXT,
+            curriculum_type TEXT,
+            level_name TEXT,
+            activity_name TEXT,
+            execution_result TEXT,
+            error_message TEXT,
+            execution_time_ms INTEGER,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # 학습 진도 테이블
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS learning_progress (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            curriculum_type TEXT,
+            level_index INTEGER,
+            activity_index INTEGER,
+            total_activities INTEGER,
+            completed_count INTEGER,
+            completion_percentage REAL,
+            last_activity_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # 인덱스 생성
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_session_id ON user_sessions(session_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_start_time ON user_sessions(start_time)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_page_views_session_id ON page_views(session_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_page_views_timestamp ON page_views(timestamp)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_code_executions_session_id ON code_executions(session_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_code_executions_timestamp ON code_executions(timestamp)")
+
+    conn.commit()
+    conn.close()
+    logger.info("Analytics tables initialized successfully")
+
+def save_session(session_id: str, user_agent: str, device_type: str, browser: str,
+                 os: str, screen_width: int, screen_height: int) -> bool:
+    """새 세션 저장"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT OR IGNORE INTO user_sessions
+            (session_id, user_agent, device_type, browser, os, screen_width, screen_height)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (session_id, user_agent, device_type, browser, os, screen_width, screen_height))
+
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to save session: {e}")
+        return False
+    finally:
+        conn.close()
+
+def update_session_end(session_id: str) -> bool:
+    """세션 종료 시간 업데이트"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            UPDATE user_sessions
+            SET end_time = CURRENT_TIMESTAMP, is_active = 0
+            WHERE session_id = ?
+        """, (session_id,))
+
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to update session end: {e}")
+        return False
+    finally:
+        conn.close()
+
+def save_page_view(session_id: str, page_path: str, page_title: str, referrer: str) -> int:
+    """페이지 조회 저장"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO page_views (session_id, page_path, page_title, referrer)
+            VALUES (?, ?, ?, ?)
+        """, (session_id, page_path, page_title, referrer))
+
+        view_id = cursor.lastrowid
+        conn.commit()
+        return view_id
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to save page view: {e}")
+        return -1
+    finally:
+        conn.close()
+
+def update_page_view_duration(session_id: str, page_path: str, duration_seconds: int) -> bool:
+    """페이지 체류 시간 업데이트"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            UPDATE page_views
+            SET duration_seconds = ?
+            WHERE id = (
+                SELECT id FROM page_views
+                WHERE session_id = ? AND page_path = ?
+                ORDER BY timestamp DESC
+                LIMIT 1
+            )
+        """, (duration_seconds, session_id, page_path))
+
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to update page view duration: {e}")
+        return False
+    finally:
+        conn.close()
+
+def save_code_execution(session_id: str, page_path: str, curriculum_type: str,
+                        level_name: str, activity_name: str, execution_result: str,
+                        error_message: str, execution_time_ms: int) -> int:
+    """코드 실행 기록 저장"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO code_executions
+            (session_id, page_path, curriculum_type, level_name, activity_name,
+             execution_result, error_message, execution_time_ms)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (session_id, page_path, curriculum_type, level_name, activity_name,
+              execution_result, error_message, execution_time_ms))
+
+        exec_id = cursor.lastrowid
+        conn.commit()
+        return exec_id
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to save code execution: {e}")
+        return -1
+    finally:
+        conn.close()
+
+def save_learning_progress(session_id: str, curriculum_type: str, level_index: int,
+                          activity_index: int, total_activities: int,
+                          completed_count: int, completion_percentage: float) -> bool:
+    """학습 진도 저장"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 기존 진도 확인 및 업데이트 또는 새로 생성
+        cursor.execute("""
+            INSERT INTO learning_progress
+            (session_id, curriculum_type, level_index, activity_index,
+             total_activities, completed_count, completion_percentage)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(session_id, curriculum_type) DO UPDATE SET
+                level_index = excluded.level_index,
+                activity_index = excluded.activity_index,
+                total_activities = excluded.total_activities,
+                completed_count = excluded.completed_count,
+                completion_percentage = excluded.completion_percentage,
+                last_activity_at = CURRENT_TIMESTAMP
+        """, (session_id, curriculum_type, level_index, activity_index,
+              total_activities, completed_count, completion_percentage))
+
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to save learning progress: {e}")
+        return False
+    finally:
+        conn.close()
+
+def get_analytics_overview(days: int = 7) -> Dict:
+    """분석 개요 통계 조회"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 오늘 방문자 수
+        cursor.execute("""
+            SELECT COUNT(DISTINCT session_id) as today_visitors
+            FROM user_sessions
+            WHERE DATE(start_time) = DATE('now')
+        """)
+        today_visitors = cursor.fetchone()['today_visitors'] or 0
+
+        # 총 세션 수 (지정된 기간)
+        cursor.execute("""
+            SELECT COUNT(*) as total_sessions
+            FROM user_sessions
+            WHERE start_time >= datetime('now', ?)
+        """, (f'-{days} days',))
+        total_sessions = cursor.fetchone()['total_sessions'] or 0
+
+        # 코드 실행 횟수 (지정된 기간)
+        cursor.execute("""
+            SELECT COUNT(*) as total_executions
+            FROM code_executions
+            WHERE timestamp >= datetime('now', ?)
+        """, (f'-{days} days',))
+        total_executions = cursor.fetchone()['total_executions'] or 0
+
+        # 현재 활성 사용자 (최근 5분 이내 활동)
+        cursor.execute("""
+            SELECT COUNT(DISTINCT session_id) as active_users
+            FROM page_views
+            WHERE timestamp >= datetime('now', '-5 minutes')
+        """)
+        active_users = cursor.fetchone()['active_users'] or 0
+
+        # 총 페이지 조회수 (지정된 기간)
+        cursor.execute("""
+            SELECT COUNT(*) as total_page_views
+            FROM page_views
+            WHERE timestamp >= datetime('now', ?)
+        """, (f'-{days} days',))
+        total_page_views = cursor.fetchone()['total_page_views'] or 0
+
+        # 평균 세션 시간 (초)
+        cursor.execute("""
+            SELECT AVG(
+                CASE
+                    WHEN end_time IS NOT NULL
+                    THEN (julianday(end_time) - julianday(start_time)) * 86400
+                    ELSE 0
+                END
+            ) as avg_session_duration
+            FROM user_sessions
+            WHERE start_time >= datetime('now', ?) AND end_time IS NOT NULL
+        """, (f'-{days} days',))
+        avg_session_duration = cursor.fetchone()['avg_session_duration'] or 0
+
+        # 코드 실행 성공률
+        cursor.execute("""
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN error_message IS NULL OR error_message = '' THEN 1 ELSE 0 END) as success
+            FROM code_executions
+            WHERE timestamp >= datetime('now', ?)
+        """, (f'-{days} days',))
+        exec_stats = cursor.fetchone()
+        success_rate = (exec_stats['success'] / exec_stats['total'] * 100) if exec_stats['total'] > 0 else 0
+
+        return {
+            "today_visitors": today_visitors,
+            "total_sessions": total_sessions,
+            "total_executions": total_executions,
+            "active_users": active_users,
+            "total_page_views": total_page_views,
+            "avg_session_duration": round(avg_session_duration, 2),
+            "code_success_rate": round(success_rate, 1)
+        }
+    finally:
+        conn.close()
+
+def get_daily_visitors(days: int = 7) -> List[Dict]:
+    """일별 방문자 추이"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT
+                DATE(start_time) as date,
+                COUNT(DISTINCT session_id) as visitors,
+                COUNT(*) as sessions
+            FROM user_sessions
+            WHERE start_time >= datetime('now', ?)
+            GROUP BY DATE(start_time)
+            ORDER BY date ASC
+        """, (f'-{days} days',))
+
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+def get_page_view_stats(days: int = 7) -> List[Dict]:
+    """페이지별 조회수 통계"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT
+                page_path,
+                page_title,
+                COUNT(*) as views,
+                AVG(duration_seconds) as avg_duration
+            FROM page_views
+            WHERE timestamp >= datetime('now', ?)
+            GROUP BY page_path
+            ORDER BY views DESC
+            LIMIT 10
+        """, (f'-{days} days',))
+
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+def get_device_distribution() -> Dict:
+    """기기 및 브라우저 분포"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 기기 유형 분포
+        cursor.execute("""
+            SELECT device_type, COUNT(*) as count
+            FROM user_sessions
+            WHERE device_type IS NOT NULL
+            GROUP BY device_type
+            ORDER BY count DESC
+        """)
+        devices = [dict(row) for row in cursor.fetchall()]
+
+        # 브라우저 분포
+        cursor.execute("""
+            SELECT browser, COUNT(*) as count
+            FROM user_sessions
+            WHERE browser IS NOT NULL
+            GROUP BY browser
+            ORDER BY count DESC
+        """)
+        browsers = [dict(row) for row in cursor.fetchall()]
+
+        # OS 분포
+        cursor.execute("""
+            SELECT os, COUNT(*) as count
+            FROM user_sessions
+            WHERE os IS NOT NULL
+            GROUP BY os
+            ORDER BY count DESC
+        """)
+        operating_systems = [dict(row) for row in cursor.fetchall()]
+
+        return {
+            "devices": devices,
+            "browsers": browsers,
+            "operating_systems": operating_systems
+        }
+    finally:
+        conn.close()
+
+def get_code_execution_stats(days: int = 7) -> Dict:
+    """코드 실행 통계"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 일별 실행 추이
+        cursor.execute("""
+            SELECT
+                DATE(timestamp) as date,
+                COUNT(*) as total,
+                SUM(CASE WHEN error_message IS NULL OR error_message = '' THEN 1 ELSE 0 END) as success,
+                SUM(CASE WHEN error_message IS NOT NULL AND error_message != '' THEN 1 ELSE 0 END) as failed
+            FROM code_executions
+            WHERE timestamp >= datetime('now', ?)
+            GROUP BY DATE(timestamp)
+            ORDER BY date ASC
+        """, (f'-{days} days',))
+        daily_stats = [dict(row) for row in cursor.fetchall()]
+
+        # 커리큘럼별 실행 통계
+        cursor.execute("""
+            SELECT
+                curriculum_type,
+                COUNT(*) as total,
+                SUM(CASE WHEN error_message IS NULL OR error_message = '' THEN 1 ELSE 0 END) as success
+            FROM code_executions
+            WHERE timestamp >= datetime('now', ?) AND curriculum_type IS NOT NULL
+            GROUP BY curriculum_type
+            ORDER BY total DESC
+        """, (f'-{days} days',))
+        curriculum_stats = [dict(row) for row in cursor.fetchall()]
+
+        # 평균 실행 시간
+        cursor.execute("""
+            SELECT AVG(execution_time_ms) as avg_time
+            FROM code_executions
+            WHERE timestamp >= datetime('now', ?)
+        """, (f'-{days} days',))
+        avg_time = cursor.fetchone()['avg_time'] or 0
+
+        return {
+            "daily_stats": daily_stats,
+            "curriculum_stats": curriculum_stats,
+            "avg_execution_time_ms": round(avg_time, 2)
+        }
+    finally:
+        conn.close()
+
+def get_recent_activity(limit: int = 20) -> List[Dict]:
+    """최근 활동 목록"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 페이지 조회와 코드 실행을 합쳐서 최근 활동 조회
+        cursor.execute("""
+            SELECT * FROM (
+                SELECT
+                    'page_view' as type,
+                    session_id,
+                    page_path as detail,
+                    page_title as title,
+                    timestamp
+                FROM page_views
+                UNION ALL
+                SELECT
+                    'code_execution' as type,
+                    session_id,
+                    COALESCE(curriculum_type, 'unknown') || ' - ' || COALESCE(level_name, '') as detail,
+                    CASE WHEN error_message IS NULL OR error_message = '' THEN '성공' ELSE '실패' END as title,
+                    timestamp
+                FROM code_executions
+            )
+            ORDER BY timestamp DESC
+            LIMIT ?
+        """, (limit,))
+
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+def get_hourly_activity(days: int = 1) -> List[Dict]:
+    """시간대별 활동 통계"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT
+                strftime('%H', timestamp) as hour,
+                COUNT(*) as activity_count
+            FROM page_views
+            WHERE timestamp >= datetime('now', ?)
+            GROUP BY strftime('%H', timestamp)
+            ORDER BY hour ASC
+        """, (f'-{days} days',))
+
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()

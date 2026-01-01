@@ -1,4 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
+import ThemeDropdown from './ThemeDropdown';
+import LearningMenuDropdown from './LearningMenuDropdown';
 import './Header.css';
 
 interface HeaderProps {
@@ -6,7 +8,7 @@ interface HeaderProps {
   showNav?: boolean;
 }
 
-export default function Header({ title = '🐍 EduPy', showNav = true }: HeaderProps) {
+export default function Header({ title = 'EduPy', showNav = true }: HeaderProps) {
   const location = useLocation();
   const isLearnPage = location.pathname === '/learn';
   const isHomePage = location.pathname === '/';
@@ -15,45 +17,25 @@ export default function Header({ title = '🐍 EduPy', showNav = true }: HeaderP
     <header className="header">
       <div className="container">
         <Link to="/" className="logo">
+          <span className="logo-icon">EPY</span>
           {title}
         </Link>
         {showNav && (
           <nav className="nav">
             {isLearnPage ? (
               <>
+                {/* 테마 선택 드롭다운 */}
+                <ThemeDropdown />
+
                 {/* 학습 메뉴 드롭다운 */}
-                <div className="dropdown">
-                  <button className="nav-link dropdown-toggle">
-                    🐍 학습 메뉴 ▼
-                  </button>
-                  <div className="dropdown-menu">
-                    <a href="https://tt.hancomtaja.com/ko" target="_blank" rel="noopener noreferrer" className="dropdown-item">
-                      ⌨️ 한컴 타자 연습
-                    </a>
-                    <Link to="/python" className="dropdown-item">
-                      🐍 파이썬 학습
-                    </Link>
-                    <Link to="/pygame" className="dropdown-item">
-                      📚 파이게임 기초 문법
-                    </Link>
-                    <div className="dropdown-item disabled">
-                      📊 데이터 분석과 시각화 <span className="badge-coming-soon">준비중</span>
-                    </div>
-                    <div className="dropdown-item disabled">
-                      🤖 AI 코딩 <span className="badge-coming-soon">준비중</span>
-                    </div>
-                    <Link to="/pygame-games" className="dropdown-item">
-                      🎮 파이게임 만들기
-                    </Link>
-                  </div>
-                </div>
+                <LearningMenuDropdown />
 
                 <Link to="/admin/login" className="nav-link">
-                  🔐 관리자
+                  <i className="fi fi-rr-lock"></i> 관리자
                 </Link>
 
                 <Link to="/" className="nav-link">
-                  🏠 홈으로
+                  <i className="fi fi-rr-home"></i> 홈으로
                 </Link>
               </>
             ) : (
@@ -70,40 +52,19 @@ export default function Header({ title = '🐍 EduPy', showNav = true }: HeaderP
                   </>
                 )}
 
+                {/* 테마 선택 드롭다운 */}
+                <ThemeDropdown />
+
                 {/* 학습 메뉴 드롭다운 */}
-                <div className="dropdown">
-                  <button className="nav-link dropdown-toggle">
-                    🐍 학습 메뉴 ▼
-                  </button>
-                  <div className="dropdown-menu">
-                    <a href="https://tt.hancomtaja.com/ko" target="_blank" rel="noopener noreferrer" className="dropdown-item">
-                      ⌨️ 한컴 타자 연습
-                    </a>
-                    <Link to="/python" className="dropdown-item">
-                      🐍 파이썬 학습
-                    </Link>
-                    <Link to="/pygame" className="dropdown-item">
-                      📚 파이게임 기초 문법
-                    </Link>
-                    <div className="dropdown-item disabled">
-                      📊 데이터 분석과 시각화 <span className="badge-coming-soon">준비중</span>
-                    </div>
-                    <div className="dropdown-item disabled">
-                      🤖 AI 코딩 <span className="badge-coming-soon">준비중</span>
-                    </div>
-                    <Link to="/pygame-games" className="dropdown-item">
-                      🎮 파이게임 만들기
-                    </Link>
-                  </div>
-                </div>
+                <LearningMenuDropdown />
 
                 <Link to="/admin/login" className="nav-link">
-                  🔐 관리자
+                  <i className="fi fi-rr-lock"></i> 관리자
                 </Link>
 
                 {!isHomePage && (
                   <Link to="/" className="nav-link">
-                    🏠 홈으로
+                    <i className="fi fi-rr-home"></i> 홈으로
                   </Link>
                 )}
               </>
