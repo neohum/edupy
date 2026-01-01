@@ -145,6 +145,10 @@ jobs:
             echo "🔍 Checking container status..."
             docker compose ps
 
+            # Create admin user if not exists
+            echo "👤 Creating admin user..."
+            docker compose exec -T backend python create_admin.py || true
+
             # Cleanup
             echo "🧹 Cleaning up..."
             rm -f /tmp/deploy.tar.gz
