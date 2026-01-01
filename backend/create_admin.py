@@ -1,10 +1,22 @@
 #!/usr/bin/env python3
 """
 관리자 계정 생성 스크립트
+
+환경 변수:
+  ADMIN_USERNAME: 관리자 사용자명 (필수)
+  ADMIN_PASSWORD: 관리자 비밀번호 (필수)
+
+사용법:
+  ADMIN_USERNAME=admin ADMIN_PASSWORD=your_password python create_admin.py
 """
+import os
 import bcrypt
 from database import init_database, create_admin_user, get_admin_user
+from dotenv import load_dotenv
 import logging
+
+# .env 파일 로드
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -13,9 +25,14 @@ def main():
     # 데이터베이스 초기화
     init_database()
 
-    # 관리자 계정 정보
-    username = "neohum"
-    password = "min9610012@@"
+    # 환경 변수에서 관리자 계정 정보 가져오기
+    username = os.getenv("ADMIN_USERNAME")
+    password = os.getenv("ADMIN_PASSWORD")
+
+    if not username or not password:
+        logger.error("❌ ADMIN_USERNAME과 ADMIN_PASSWORD 환경 변수를 설정해주세요.")
+        logger.info("예시: ADMIN_USERNAME=admin ADMIN_PASSWORD=your_password python create_admin.py")
+        return
 
     # 기존 계정 확인
     existing_user = get_admin_user(username)
@@ -31,8 +48,6 @@ def main():
     # 관리자 계정 생성
     if create_admin_user(username, password_hash):
         logger.info(f"✅ Admin user '{username}' created successfully!")
-        logger.info(f"Username: {username}")
-        logger.info(f"Password: {password}")
         logger.info("⚠️  Please change the password after first login.")
     else:
         logger.error(f"❌ Failed to create admin user '{username}'")

@@ -1,6 +1,9 @@
 // API 설정
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-export const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
+// Production: 빈 문자열 (상대 경로 사용, nginx가 /api를 프록시)
+// Development: localhost:8000
+const isDev = import.meta.env.DEV;
+export const API_BASE_URL = import.meta.env.VITE_API_URL || (isDev ? 'http://localhost:8000' : '');
+export const WS_BASE_URL = import.meta.env.VITE_WS_URL || (isDev ? 'ws://localhost:8000' : `wss://${window.location.host}`);
 
 // API 엔드포인트
 export const API_ENDPOINTS = {

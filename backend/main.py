@@ -97,8 +97,9 @@ async def root():
     }
 
 @app.get("/health")
+@app.get("/api/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {"status": "healthy", "environment": ENVIRONMENT}
 
 # ==================== 인증 관련 함수 ====================
 
@@ -653,7 +654,10 @@ async def send_error_report(report: ErrorReport):
         logger.info(f"New error saved to database with ID: {error_id}")
 
         # 2. 환경 변수에서 이메일 주소 가져오기
-        to_email = os.getenv("ERROR_REPORT_EMAIL", "neohum77@gmail.com")
+        to_email = os.getenv("ERROR_REPORT_EMAIL")
+        if not to_email:
+            logger.warning("ERROR_REPORT_EMAIL 환경 변수가 설정되지 않았습니다.")
+            return {"success": True, "message": "오류가 저장되었습니다. (이메일 미설정)", "error_id": error_id}
         from_email = os.getenv("FROM_EMAIL", "onboarding@resend.dev")
 
         logger.debug(f"Sending email from {from_email} to {to_email}")

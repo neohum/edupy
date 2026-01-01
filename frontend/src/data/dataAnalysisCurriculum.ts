@@ -222,6 +222,9 @@ for i in range(len(활동)):
           description: "matplotlib으로 예쁜 막대그래프를 그려요.",
           starterCode: `import matplotlib.pyplot as plt
 
+# 한글 폰트 설정 (전역 설정이 자동 적용됨)
+plt.rcParams['axes.unicode_minus'] = False
+
 # 좋아하는 계절 투표
 계절 = ["봄", "여름", "가을", "겨울"]
 투표 = [8, 5, 10, 7]
@@ -238,6 +241,9 @@ plt.show()`,
           description: "비율을 원그래프로 나타내요.",
           starterCode: `import matplotlib.pyplot as plt
 
+# 한글 폰트 설정 (전역 설정이 자동 적용됨)
+plt.rcParams['axes.unicode_minus'] = False
+
 # 점심 메뉴 선호도
 메뉴 = ["짜장면", "떡볶이", "김밥", "라면"]
 선호도 = [35, 25, 20, 20]
@@ -251,6 +257,9 @@ plt.show()`
           title: "꺾은선그래프",
           description: "일주일 기온 변화를 꺾은선그래프로 그려요.",
           starterCode: `import matplotlib.pyplot as plt
+
+# 한글 폰트 설정 (전역 설정이 자동 적용됨)
+plt.rcParams['axes.unicode_minus'] = False
 
 요일 = ["월", "화", "수", "목", "금", "토", "일"]
 기온 = [22, 24, 21, 25, 26, 23, 20]
@@ -421,6 +430,9 @@ else:
           description: "두 변수의 관계를 산점도로 표현해요.",
           starterCode: `import matplotlib.pyplot as plt
 
+# 한글 폰트 설정 (전역 설정이 자동 적용됨)
+plt.rcParams['axes.unicode_minus'] = False
+
 공부시간 = [2, 3, 4, 5, 6, 7, 8, 5, 4, 6]
 점수 = [65, 70, 75, 82, 88, 92, 95, 80, 72, 85]
 
@@ -438,6 +450,9 @@ plt.show()`
           starterCode: `import matplotlib.pyplot as plt
 import random
 
+# 한글 폰트 설정 (전역 설정이 자동 적용됨)
+plt.rcParams['axes.unicode_minus'] = False
+
 # 100명의 학생 점수 (정규분포 모의)
 점수 = [random.gauss(75, 10) for _ in range(100)]
 
@@ -454,6 +469,9 @@ plt.show()`
           title: "여러 그래프 한 번에",
           description: "subplot으로 여러 그래프를 배치해요.",
           starterCode: `import matplotlib.pyplot as plt
+
+# 한글 폰트 설정 (전역 설정이 자동 적용됨)
+plt.rcParams['axes.unicode_minus'] = False
 
 월 = ["1월", "2월", "3월", "4월"]
 매출 = [120, 150, 180, 200]
@@ -645,6 +663,9 @@ for col in ["공부시간", "수면시간", "운동시간"]:
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# 한글 폰트 설정 (전역 설정이 자동 적용됨)
+plt.rcParams['axes.unicode_minus'] = False
+
 np.random.seed(42)
 n = 100
 
@@ -677,6 +698,9 @@ plt.show()`
           starterCode: `import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
+# 한글 폰트 설정 (전역 설정이 자동 적용됨)
+plt.rcParams['axes.unicode_minus'] = False
 
 np.random.seed(42)
 
@@ -713,6 +737,9 @@ plt.show()`
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# 한글 폰트 설정 (전역 설정이 자동 적용됨)
+plt.rcParams['axes.unicode_minus'] = False
+
 np.random.seed(42)
 
 # 100일간의 주가 시뮬레이션
@@ -743,6 +770,9 @@ plt.show()`
           starterCode: `import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
+# 한글 폰트 설정 (전역 설정이 자동 적용됨)
+plt.rcParams['axes.unicode_minus'] = False
 
 np.random.seed(42)
 
@@ -786,6 +816,9 @@ plt.show()`
           description: "직선으로 데이터의 관계를 모델링해요.",
           starterCode: `import numpy as np
 import matplotlib.pyplot as plt
+
+# 한글 폰트 설정 (전역 설정이 자동 적용됨)
+plt.rcParams['axes.unicode_minus'] = False
 
 # 데이터 생성
 np.random.seed(42)
