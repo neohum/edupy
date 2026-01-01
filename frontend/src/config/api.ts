@@ -14,6 +14,12 @@ export const API_ENDPOINTS = {
   toggleResolved: (id: number) => `${API_BASE_URL}/api/error-reports/${id}/toggle-resolved`,
   verifyCode: `${API_BASE_URL}/api/verify-code`,
 
+  // 서버
+  serverStatus: `${API_BASE_URL}/`,
+
+  // Python
+  pythonExecute: `${API_BASE_URL}/api/python/execute`,
+
   // Turtle
   turtleExecute: `${API_BASE_URL}/api/turtle/execute`,
 
@@ -24,6 +30,18 @@ export const API_ENDPOINTS = {
 
   // 오류 보고
   sendErrorReport: `${API_BASE_URL}/api/error-report`,
+  errorReport: `${API_BASE_URL}/api/errors/report`,
+  checkDuplicate: `${API_BASE_URL}/api/errors/check-duplicate`,
+
+  // 오류 관리 (관리자)
+  errors: `${API_BASE_URL}/api/errors`,
+  errorsStatistics: `${API_BASE_URL}/api/errors/statistics`,
+  errorToggle: (id: number) => `${API_BASE_URL}/api/errors/${id}/toggle`,
+  errorsBatchTest: `${API_BASE_URL}/api/errors/batch-test`,
+
+  // 관리자 인증
+  adminLogin: `${API_BASE_URL}/api/admin/login`,
+  adminVerify: `${API_BASE_URL}/api/admin/verify`,
 
   // 검색
   search: `${API_BASE_URL}/api/search`,

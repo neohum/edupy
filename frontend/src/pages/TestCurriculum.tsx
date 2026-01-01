@@ -385,7 +385,7 @@ builtins.print = custom_print
         const isTurtleCode = code.includes('import turtle') || code.includes('from turtle');
         if (isTurtleCode) {
           try {
-            const response = await fetch('http://localhost:8000/api/turtle/execute', {
+            const response = await fetch(API_ENDPOINTS.turtleExecute, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ code, width: 600, height: 600, animate: false }),
@@ -428,7 +428,7 @@ builtins.print = custom_print
                 error = result.error || 'HTML 변환 실패';
               }
             } else {
-              const response = await fetch('http://localhost:8000/api/pygame/execute', {
+              const response = await fetch(API_ENDPOINTS.pygameExecute, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code, width: 600, height: 400, max_frames: 60 }),
@@ -538,12 +538,12 @@ builtins.print = custom_print
     setApiResults([]);
 
     const apiTests = [
-      { name: '서버 상태 확인', endpoint: 'http://localhost:8000/', method: 'GET' },
-      { name: 'Python 실행 API', endpoint: 'http://localhost:8000/api/python/execute', method: 'POST', body: { code: 'print("Hello")' } },
-      { name: 'Turtle 실행 API', endpoint: 'http://localhost:8000/api/turtle/execute', method: 'POST', body: { code: 'import turtle\nt = turtle.Turtle()\nt.forward(100)', width: 400, height: 400 } },
-      { name: 'Pygame 실행 API', endpoint: 'http://localhost:8000/api/pygame/execute', method: 'POST', body: { code: 'import pygame\npygame.init()\nscreen = pygame.display.set_mode((100,100))\nscreen.fill((255,255,255))\npygame.quit()', width: 100, height: 100, max_frames: 1 } },
+      { name: '서버 상태 확인', endpoint: API_ENDPOINTS.serverStatus, method: 'GET' },
+      { name: 'Python 실행 API', endpoint: API_ENDPOINTS.pythonExecute, method: 'POST', body: { code: 'print("Hello")' } },
+      { name: 'Turtle 실행 API', endpoint: API_ENDPOINTS.turtleExecute, method: 'POST', body: { code: 'import turtle\nt = turtle.Turtle()\nt.forward(100)', width: 400, height: 400 } },
+      { name: 'Pygame 실행 API', endpoint: API_ENDPOINTS.pygameExecute, method: 'POST', body: { code: 'import pygame\npygame.init()\nscreen = pygame.display.set_mode((100,100))\nscreen.fill((255,255,255))\npygame.quit()', width: 100, height: 100, max_frames: 1 } },
       { name: 'Pygame HTML 변환 API', endpoint: API_ENDPOINTS.pygameToHtml, method: 'POST', body: { code: 'import pygame\npygame.init()\nscreen = pygame.display.set_mode((100,100))\nscreen.fill((255,255,255))', width: 100, height: 100 } },
-      { name: '오류 중복 체크 API', endpoint: 'http://localhost:8000/api/errors/check-duplicate', method: 'POST', body: { page: 'test', code: 'print("test")', output: 'test output' } },
+      { name: '오류 중복 체크 API', endpoint: API_ENDPOINTS.checkDuplicate, method: 'POST', body: { page: 'test', code: 'print("test")', output: 'test output' } },
     ];
 
     const results: APITestResult[] = [];

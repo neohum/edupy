@@ -104,7 +104,7 @@ export default function PygameGames() {
       // 게임 타입 자동 감지
       const gameType = detectGameType(code, currentActivity.title);
 
-      const response = await fetch('http://localhost:8000/api/pygame/execute', {
+      const response = await fetch(API_ENDPOINTS.pygameExecute, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -246,7 +246,7 @@ export default function PygameGames() {
     setErrorSubmitting(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/errors/report', {
+      const response = await fetch(API_ENDPOINTS.errorReport, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

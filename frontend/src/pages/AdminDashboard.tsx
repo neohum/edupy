@@ -5,6 +5,7 @@ import TestCurriculum from './TestCurriculum';
 import { usePyodide } from '../hooks/usePyodide';
 import LearningMenuDropdown from '../components/LearningMenuDropdown';
 import DashboardOverview from '../components/DashboardOverview';
+import { API_ENDPOINTS } from '../config/api';
 import './AdminDashboard.css';
 
 interface ErrorReport {
@@ -53,7 +54,7 @@ export default function AdminDashboard() {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/api/admin/verify', {
+      const response = await fetch(API_ENDPOINTS.adminVerify, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -80,7 +81,7 @@ export default function AdminDashboard() {
 
     try {
       // 오류 목록 가져오기 (필터 적용)
-      const errorsResponse = await fetch(`http://localhost:8000/api/errors?filter_status=${status}`, {
+      const errorsResponse = await fetch(`${API_ENDPOINTS.errors}?filter_status=${status}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -92,7 +93,7 @@ export default function AdminDashboard() {
       }
 
       // 통계 가져오기
-      const statsResponse = await fetch('http://localhost:8000/api/errors/statistics', {
+      const statsResponse = await fetch(API_ENDPOINTS.errorsStatistics, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -117,7 +118,7 @@ export default function AdminDashboard() {
     const token = localStorage.getItem('admin_token');
 
     try {
-      const response = await fetch(`http://localhost:8000/api/errors/${errorId}/toggle`, {
+      const response = await fetch(API_ENDPOINTS.errorToggle(errorId), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -172,7 +173,7 @@ export default function AdminDashboard() {
 
     try {
       const token = localStorage.getItem('admin_token');
-      const response = await fetch('http://localhost:8000/api/errors/batch-test', {
+      const response = await fetch(API_ENDPOINTS.errorsBatchTest, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -253,7 +254,7 @@ sys.stdout = OutputCapture()
 
         // 에러 없이 실행되면 해결됨으로 표시
         const token = localStorage.getItem('admin_token');
-        const response = await fetch(`http://localhost:8000/api/errors/${error.id}/toggle`, {
+        const response = await fetch(API_ENDPOINTS.errorToggle(error.id), {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,

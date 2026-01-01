@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import ThemeDropdown from '../components/ThemeDropdown';
+import { API_ENDPOINTS } from '../config/api';
 import './AdminLogin.css';
 
 export default function AdminLogin() {
@@ -21,7 +22,7 @@ export default function AdminLogin() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/admin/login', {
+      const response = await fetch(API_ENDPOINTS.adminLogin, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
