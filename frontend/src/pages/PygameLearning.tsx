@@ -8,7 +8,6 @@ import { useProgress, useCompletedActivities } from '../hooks/useLocalStorage';
 import { usePyodide, setupPythonEnvironment, wrapUserCode } from '../hooks/usePyodide';
 import ProgressModal from '../components/ProgressModal';
 import OutputModal from '../components/OutputModal';
-import ErrorReportButton from '../components/ErrorReportButton';
 import ThemeDropdown from '../components/ThemeDropdown';
 import LearningMenuDropdown from '../components/LearningMenuDropdown';
 import Footer from '../components/Footer';

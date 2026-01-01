@@ -12,33 +12,6 @@ import Footer from '../components/Footer';
 import { API_ENDPOINTS } from '../config/api';
 import './PythonLearning.css';
 
-// 커리큘럼 타입
-interface Activity {
-  id: string;
-  title: string;
-  description: string;
-  starterCode: string;
-  hint?: string;
-}
-
-interface Level {
-  level: number;
-  title: string;
-  concepts: string[];
-  activities: Activity[];
-}
-
-interface Curriculum {
-  id: string;
-  title: string;
-  gradeLevel: 'elementary' | 'middle' | 'high';
-  gradeLevelKorean: string;
-  description: string;
-  icon: string;
-  color: string;
-  levels: Level[];
-}
-
 export default function CurriculumLearning() {
   const { curriculumId } = useParams<{ curriculumId: string }>();
   const navigate = useNavigate();

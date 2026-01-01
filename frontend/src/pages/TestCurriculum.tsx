@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { pythonCurriculum } from '../data/pythonCurriculum';
 import { pygameCurriculum } from '../data/pygameCurriculum';
@@ -96,11 +96,11 @@ interface HTMLTestResult {
 }
 
 // Python 구문 강조 함수
-const highlightPythonCode = (code: string): JSX.Element[] => {
+const highlightPythonCode = (code: string): React.ReactElement[] => {
   const lines = code.split('\n');
 
   return lines.map((line, lineIndex) => {
-    const tokens: JSX.Element[] = [];
+    const tokens: React.ReactElement[] = [];
     let remaining = line;
     let tokenIndex = 0;
 
