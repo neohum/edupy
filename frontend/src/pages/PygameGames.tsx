@@ -246,7 +246,7 @@ export default function PygameGames() {
     setErrorSubmitting(true);
 
     try {
-      const response = await fetch(API_ENDPOINTS.errorReport, {
+      const response = await fetch(API_ENDPOINTS.submitError, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

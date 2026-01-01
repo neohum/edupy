@@ -30,7 +30,7 @@ export const API_ENDPOINTS = {
 
   // 오류 보고
   sendErrorReport: `${API_BASE_URL}/api/error-report`,
-  errorReport: `${API_BASE_URL}/api/errors/report`,
+  submitError: `${API_BASE_URL}/api/errors/report`,
   checkDuplicate: `${API_BASE_URL}/api/errors/check-duplicate`,
 
   // 오류 관리 (관리자)
