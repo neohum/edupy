@@ -42,8 +42,10 @@ services:
       - backend-uploads:/app/uploads
     networks:
       - edupy-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    # extra_hosts is only needed for Docker Desktop (Mac/Windows)
+    # On Linux, use the Docker bridge gateway IP (usually 172.17.0.1) directly in DATABASE_URL
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 30s
