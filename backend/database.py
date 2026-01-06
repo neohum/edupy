@@ -50,7 +50,19 @@ def clear_cache():
 
 # 데이터베이스 설정 - SQLite 사용
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, 'edupy.db')
+# Use /app/data directory for database (mounted as volume in Docker)
+DATA_DIR = os.getenv('DATA_DIR', os.path.join(BASE_DIR, 'data'))
+
+# Ensure directory exists and is writable
+try:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    logger.info(f"Data directory: {DATA_DIR}")
+    logger.info(f"Data directory exists: {os.path.exists(DATA_DIR)}")
+    logger.info(f"Data directory is writable: {os.access(DATA_DIR, os.W_OK)}")
+except Exception as e:
+    logger.error(f"Failed to create data directory: {e}")
+
+DB_PATH = os.path.join(DATA_DIR, 'edupy.db')
 
 logger.info(f"Database type: SQLite")
 logger.info(f"Database path: {DB_PATH}")

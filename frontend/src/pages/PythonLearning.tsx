@@ -81,6 +81,7 @@ export default function PythonLearning() {
     },
   ]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const inputResolveRef = useRef<any>(null);
 
   // Turtle 애니메이션 상태
@@ -285,7 +286,7 @@ export default function PythonLearning() {
         // turtle 코드에 input()이 있는지 확인
         const hasInput = code.includes('input(');
         let finalCode = code;
-        let inputValues: { [key: string]: string } = {};
+        const inputValues: { [key: string]: string } = {};
 
         if (hasInput) {
           // input()이 있으면 alert로 입력값 수집
@@ -386,6 +387,7 @@ export default function PythonLearning() {
 
         setIsRunning(false);
         return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         const errorMsg = error.message || String(error);
         setOutput(`❌ Turtle 실행 오류:\n${errorMsg}`);

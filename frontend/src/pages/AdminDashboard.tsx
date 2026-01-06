@@ -188,7 +188,9 @@ export default function AdminDashboard() {
         const data = await response.json();
 
         // 결과 표시
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const successCount = data.results.filter((r: any) => r.success).length;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const failCount = data.results.filter((r: any) => !r.success).length;
 
         const resultMessage = `테스트 결과: 성공 ${successCount}개, 실패 ${failCount}개`;
@@ -209,9 +211,10 @@ export default function AdminDashboard() {
         const errorData = await response.json();
         throw new Error(errorData.detail || '테스트 실패');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Batch test error:', error);
-      toast.error(error.message || '서버 오류가 발생했습니다.');
+      const errorMessage = error instanceof Error ? error.message : '서버 오류가 발생했습니다.';
+      toast.error(errorMessage);
     } finally {
       setIsBatchTesting(false);
     }
@@ -268,10 +271,11 @@ sys.stdout = OutputCapture()
           }
           loadData(filterStatus);
         }
-      } catch (testError: any) {
+      } catch (testError: unknown) {
         // 여전히 에러가 발생하면 알림
         toast.error('테스트 실패: 오류가 아직 해결되지 않았습니다.');
-        console.error('테스트 오류:', testError.message);
+        const errorMessage = testError instanceof Error ? testError.message : String(testError);
+        console.error('테스트 오류:', errorMessage);
       } finally {
         // stdout 복원
         pyodide.runPython('sys.stdout = _original_stdout');

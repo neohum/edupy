@@ -73,8 +73,8 @@ export default function AlgorithmGame({ type, difficulty = 'easy' }: AlgorithmGa
         { length: config.arraySize },
         () => Math.floor(Math.random() * config.maxNumber) + 1
       ).sort((a, b) => a - b);
-      setSearchArray(arr);
       const randomIndex = Math.floor(Math.random() * arr.length);
+      setSearchArray(arr);
       setTargetNumber(arr[randomIndex]);
       setSelectedIndex(null);
     }

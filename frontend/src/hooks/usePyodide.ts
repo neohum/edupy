@@ -1,14 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 
 // Pyodide 타입 정의
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PyodideType = any;
+
 declare global {
   interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     loadPyodide: any;
   }
 }
 
 interface UsePyodideReturn {
-  pyodide: any;
+  pyodide: PyodideType;
   isReady: boolean;
   isLoading: boolean;
   error: string | null;
@@ -18,11 +22,11 @@ interface UsePyodideReturn {
  * Pyodide 초기화 및 관리 훅
  */
 export function usePyodide(): UsePyodideReturn {
-  const [pyodide, setPyodide] = useState<any>(null);
+  const [pyodide, setPyodide] = useState<PyodideType>(null);
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const pyodideRef = useRef<any>(null);
+  const pyodideRef = useRef<PyodideType>(null);
   const initializingRef = useRef(false);
 
   useEffect(() => {
@@ -206,7 +210,7 @@ print('📊 Matplotlib 설정 완료')
         setPyodide(pyodideInstance);
         setIsReady(true);
         setIsLoading(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Pyodide 초기화 실패:', err);
         // 에러가 발생해도 pyodide 인스턴스가 있으면 사용
         if (pyodideRef.current) {
@@ -214,7 +218,8 @@ print('📊 Matplotlib 설정 완료')
           setIsReady(true);
           setIsLoading(false);
         } else {
-          setError(err.message || 'Pyodide 초기화에 실패했습니다.');
+          const errorMessage = err instanceof Error ? err.message : 'Pyodide 초기화에 실패했습니다.';
+          setError(errorMessage);
           setIsLoading(false);
           initializingRef.current = false;
         }
@@ -231,7 +236,7 @@ print('📊 Matplotlib 설정 완료')
  * Python 코드 실행을 위한 헬퍼 함수
  */
 export function setupPythonEnvironment(
-  pyodide: any,
+  pyodide: PyodideType,
   onOutput: (text: string) => void,
   onInput: (prompt: string) => Promise<string>
 ) {
@@ -274,7 +279,7 @@ builtins.print = custom_print
 /**
  * 코드에서 필요한 패키지를 감지하고 로드하는 함수
  */
-export async function loadRequiredPackages(pyodide: any, code: string): Promise<void> {
+export async function loadRequiredPackages(pyodide: PyodideType, code: string): Promise<void> {
   if (!pyodide) return;
 
   // 코드에서 import 문 분석

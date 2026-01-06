@@ -28,7 +28,8 @@ services:
       - "8000:8000"
     environment:
       - ENVIRONMENT=production
-      # SQLite database - no DATABASE_URL needed (uses default: /app/edupy.db)
+      - DATA_DIR=/app/data
+      # SQLite database stored in /app/data/edupy.db
       - RESEND_API_KEY=${RESEND_API_KEY}
       - ERROR_REPORT_EMAIL=${ERROR_REPORT_EMAIL}
       - FROM_EMAIL=${FROM_EMAIL}
@@ -38,7 +39,6 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     volumes:
       - ./data:/app/data
-      - ./backend/edupy.db:/app/edupy.db
       - backend-uploads:/app/uploads
     networks:
       - edupy-network

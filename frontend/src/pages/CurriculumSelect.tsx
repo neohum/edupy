@@ -11,17 +11,16 @@ type CurriculumType = 'data' | 'ai';
 export default function CurriculumSelect() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') === 'ai' ? 'ai' : 'data';
+  const tab = searchParams.get('tab');
+  const initialTab = tab === 'ai' ? 'ai' : 'data';
   const [selectedType, setSelectedType] = useState<CurriculumType>(initialTab);
 
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'ai') {
-      setSelectedType('ai');
-    } else if (tab === 'data') {
-      setSelectedType('data');
+    const newType = tab === 'ai' ? 'ai' : 'data';
+    if (newType !== selectedType) {
+      setSelectedType(newType);
     }
-  }, [searchParams]);
+  }, [tab, selectedType]);
 
   const curriculums = selectedType === 'data' ? allDataCurriculums : allAICurriculums;
 

@@ -103,6 +103,7 @@ export default function PygameLearning() {
     },
   ]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const inputResolveRef = useRef<any>(null);
 
   const currentLevel = pygameCurriculum.levels[currentLevelIndex];
@@ -275,6 +276,7 @@ export default function PygameLearning() {
         setOutput(`❌ 오류:\n${result.error}`);
         setErrorInfo({ message: result.error, code: code });
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       setOutput(`❌ 실행 오류:\n${error.message}`);
       setErrorInfo({ message: error.message, code: code });
@@ -396,8 +398,8 @@ export default function PygameLearning() {
       markActivityAsCompleted();
       setErrorInfo(null);
 
-    } catch (error: any) {
-      let errorMsg = error.message || String(error);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
 
       setOutput((prev) => (prev ? prev + '\n\n' : '') + `❌ 오류:\n${errorMsg}`);
 

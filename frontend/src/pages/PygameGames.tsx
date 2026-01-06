@@ -267,7 +267,7 @@ export default function PygameGames() {
       } else {
         toast.error('오류 보고에 실패했습니다. 다시 시도해주세요.');
       }
-    } catch (error) {
+    } catch {
       toast.error('오류 보고 중 문제가 발생했습니다.');
     } finally {
       setErrorSubmitting(false);

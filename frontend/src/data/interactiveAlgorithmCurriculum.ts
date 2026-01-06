@@ -56,7 +56,7 @@ export interface InputField {
   id: string;
   label: string;
   type: 'number' | 'text' | 'array';
-  defaultValue?: any;
+  defaultValue?: string | number | number[];
   placeholder?: string;
 }
 

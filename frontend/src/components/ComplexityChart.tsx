@@ -17,7 +17,7 @@ const defaultAlgorithms: Algorithm[] = [
   {
     name: 'O(1) - 상수',
     complexity: 'O(1)',
-    func: (_n: number) => 1,
+    func: () => 1,
     color: '#4caf50'
   },
   {
@@ -230,6 +230,7 @@ export default function ComplexityChart({
 
   useEffect(() => {
     drawChart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedN, hoveredAlgo, showGrid, algorithms]);
 
   const getComplexityValue = (algo: Algorithm, n: number): string => {

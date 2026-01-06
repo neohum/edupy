@@ -231,6 +231,7 @@ export default function DashboardOverview() {
     // X Axis
     g.append('g')
       .attr('transform', `translate(0,${height})`)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat('%m/%d') as any))
       .selectAll('text')
       .attr('fill', '#666');

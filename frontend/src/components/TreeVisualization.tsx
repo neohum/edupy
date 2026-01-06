@@ -20,7 +20,7 @@ interface TreeVisualizationProps {
   autoStart?: boolean;
 }
 
-export default function TreeVisualization({ autoStart: _autoStart = false }: TreeVisualizationProps) {
+export default function TreeVisualization({ autoStart = false }: TreeVisualizationProps) {
   const [tree, setTree] = useState<TreeNode | null>(null);
   const [steps, setSteps] = useState<TreeStep[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
@@ -338,10 +338,16 @@ export default function TreeVisualization({ autoStart: _autoStart = false }: Tre
   useEffect(() => {
     if (steps[currentStep]) {
       const stepData = steps[currentStep];
-      setTree(stepData.tree);
       drawTree(stepData.tree, stepData.highlightNode);
     }
-  }, [currentStep, steps]);
+  }, [currentStep, steps, drawTree]);
+
+  // 트리 상태 동기화 - 자동 시작 시 한 번만 트리 설정
+  useEffect(() => {
+    if (autoStart && steps.length > 0 && currentStep === 0 && !tree) {
+      setTree(steps[0].tree);
+    }
+  }, [autoStart, steps, currentStep, tree]);
 
   // 트리 변경 시 그리기
   useEffect(() => {

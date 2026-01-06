@@ -34,11 +34,6 @@ export default function GraphVisualization({ type, autoStart = false }: GraphVis
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const intervalRef = useRef<number | null>(null);
 
-  // 샘플 그래프 생성
-  useEffect(() => {
-    createSampleGraph();
-  }, []);
-
   const createSampleGraph = () => {
     const nodes = new Map<number, GraphNode>();
 
@@ -72,6 +67,12 @@ export default function GraphVisualization({ type, autoStart = false }: GraphVis
 
     setGraph(nodes);
   };
+
+  // 샘플 그래프 생성
+  useEffect(() => {
+    createSampleGraph();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // DFS 알고리즘
   const generateDFSSteps = (startNodeId: number): GraphStep[] => {

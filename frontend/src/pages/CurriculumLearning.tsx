@@ -97,31 +97,6 @@ export default function CurriculumLearning() {
     }
   };
 
-  // 커리큘럼이 없으면 선택 페이지로 이동
-  useEffect(() => {
-    if (!curriculum) {
-      toast.error('커리큘럼을 찾을 수 없습니다.');
-      navigate('/');
-    }
-  }, [curriculum, navigate]);
-
-  if (!curriculum) {
-    return null;
-  }
-
-  // 안전하게 레벨과 활동 가져오기
-  const currentLevel = curriculum.levels[currentLevelIndex];
-  if (!currentLevel) {
-    console.error(`Level ${currentLevelIndex} not found in curriculum ${curriculum.id}`);
-    return null;
-  }
-
-  const currentActivity = currentLevel.activities[currentActivityIndex];
-  if (!currentActivity) {
-    console.error(`Activity ${currentActivityIndex} not found in level ${currentLevelIndex}`);
-    return null;
-  }
-
   // LocalStorage에서 진행 상황 로드
   useEffect(() => {
     const saved = localStorage.getItem(`edupy_${curriculumId}_completed`);
@@ -165,6 +140,31 @@ export default function CurriculumLearning() {
     setOutput(pyodideReady ? '✅ Python 환경이 준비되었습니다! 코드를 작성하고 실행해보세요.' : '');
     setWaitingForInput(false);
   }, [currentLevelIndex, currentActivityIndex, pyodideReady]);
+
+  // 커리큘럼이 없으면 선택 페이지로 이동
+  useEffect(() => {
+    if (!curriculum) {
+      toast.error('커리큘럼을 찾을 수 없습니다.');
+      navigate('/');
+    }
+  }, [curriculum, navigate]);
+
+  if (!curriculum) {
+    return null;
+  }
+
+  // 안전하게 레벨과 활동 가져오기
+  const currentLevel = curriculum.levels[currentLevelIndex];
+  if (!currentLevel) {
+    console.error(`Level ${currentLevelIndex} not found in curriculum ${curriculum.id}`);
+    return null;
+  }
+
+  const currentActivity = currentLevel.activities[currentActivityIndex];
+  if (!currentActivity) {
+    console.error(`Activity ${currentActivityIndex} not found in level ${currentLevelIndex}`);
+    return null;
+  }
 
   // 사용자 입력 제출
   const handleInputSubmit = () => {
@@ -234,8 +234,8 @@ export default function CurriculumLearning() {
       setCompletedActivities(prev => new Set([...prev, currentActivity.id]));
       toast.success('코드 실행 완료!');
 
-    } catch (error: any) {
-      let errorMsg = error.message || String(error);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
       setOutput(prev => (prev ? prev + '\n\n' : '') + `❌ 오류:\n${errorMsg}`);
       setIsRunning(false);
     }
@@ -273,7 +273,7 @@ export default function CurriculumLearning() {
       await navigator.clipboard.writeText(currentActivity.starterCode);
       setCopyButtonText('✓ 복사됨!');
       setTimeout(() => setCopyButtonText('복사'), 2000);
-    } catch (err) {
+    } catch {
       setCopyButtonText('복사 실패');
       setTimeout(() => setCopyButtonText('복사'), 2000);
     }
@@ -432,14 +432,18 @@ export default function CurriculumLearning() {
         </div>
 
         {/* 인터랙티브 컴포넌트 섹션 */}
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {(currentActivity as any).quiz && (
           <div style={{ marginTop: '1.5rem' }}>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <QuizComponent quiz={(currentActivity as any).quiz} />
           </div>
         )}
 
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {(currentActivity as any).testCases && (currentActivity as any).testCases.length > 0 && (
           <div style={{ marginTop: '1.5rem' }}>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <TestCaseComponent
               testCases={(currentActivity as any).testCases}
               onRunTests={async (testCases) => {
@@ -455,42 +459,54 @@ export default function CurriculumLearning() {
           </div>
         )}
 
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {(currentActivity as any).challenges && (currentActivity as any).challenges.length > 0 && (
           <div style={{ marginTop: '1.5rem' }}>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <ChallengeComponent challenges={(currentActivity as any).challenges} />
           </div>
         )}
 
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {(currentActivity as any).visualization === 'sorting' && (
           <div style={{ marginTop: '1.5rem' }}>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <SortingVisualization algorithm={(currentActivity as any).sortAlgorithm || 'bubble'} />
           </div>
         )}
 
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {(currentActivity as any).visualization === 'searching' && (
           <div style={{ marginTop: '1.5rem' }}>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <SearchVisualization algorithm={(currentActivity as any).searchAlgorithm || 'linear'} />
           </div>
         )}
 
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {(currentActivity as any).visualization === 'recursion' && (
           <div style={{ marginTop: '1.5rem' }}>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <RecursionVisualization type={(currentActivity as any).recursionType || 'factorial'} />
           </div>
         )}
 
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {(currentActivity as any).visualization === 'tree' && (
           <div style={{ marginTop: '1.5rem' }}>
             <TreeVisualization />
           </div>
         )}
 
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {(currentActivity as any).visualization === 'graph' && (
           <div style={{ marginTop: '1.5rem' }}>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <GraphVisualization type={(currentActivity as any).graphType || 'dfs'} />
           </div>
         )}
 
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {(currentActivity as any).stepByStep && (
           <div style={{ marginTop: '1.5rem' }}>
             <ComplexityChart />

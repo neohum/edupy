@@ -31,6 +31,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY . .
 
+# Create data directory and set permissions
+RUN mkdir -p /app/data && chmod 777 /app/data
+
 # Create non-root user for security
 RUN adduser --disabled-password --gecos '' appuser && \
     chown -R appuser:appuser /app

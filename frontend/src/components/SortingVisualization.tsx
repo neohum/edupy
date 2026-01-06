@@ -207,14 +207,11 @@ export default function SortingVisualization({
       intervalRef.current = setInterval(() => {
         setCurrentStep((prev) => {
           if (prev >= steps.length - 1) {
-            setIsPlaying(false);
             return prev;
           }
           return prev + 1;
         });
       }, speed);
-    } else if (currentStep >= steps.length - 1) {
-      setIsPlaying(false);
     }
 
     return () => {
@@ -223,6 +220,13 @@ export default function SortingVisualization({
       }
     };
   }, [isPlaying, currentStep, steps.length, speed]);
+
+  // 완료 시 자동 정지
+  useEffect(() => {
+    if (currentStep >= steps.length - 1) {
+      setIsPlaying(false);
+    }
+  }, [currentStep, steps.length]);
 
   // Auto start
   useEffect(() => {

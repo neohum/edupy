@@ -461,9 +461,9 @@ builtins.print = custom_print
           await loadRequiredPackages(pyodide, code);
 
           const outputs: string[] = [];
-          pyodide!.globals.set('js_print', (...args: any[]) => outputs.push(args.join(' ')));
+          pyodide!.globals.set('js_print', (...args: unknown[]) => outputs.push(args.join(' ')));
           let inputIndex = 0;
-          pyodide!.globals.set('js_input', async (_prompt: string) => {
+          pyodide!.globals.set('js_input', async () => {
             if (inputIndex >= inputs.length) {
               outputs.push(`[입력 부족 - 기본값: 0]`);
               inputIndex++;

@@ -15,7 +15,7 @@ export default function GameWindow() {
 
   // FPS 계산용
   const frameCountRef = useRef(0);
-  const lastFpsUpdateRef = useRef(Date.now());
+  const lastFpsUpdateRef = useRef(0);
 
   // 프레임 렌더링
   const renderFrame = useCallback((base64Data: string) => {
@@ -74,6 +74,11 @@ export default function GameWindow() {
       cleanupTimeoutRef.current = null;
     }
     isCleaningUpRef.current = false;
+
+    // FPS 계산용 초기화
+    if (lastFpsUpdateRef.current === 0) {
+      lastFpsUpdateRef.current = Date.now();
+    }
 
     // 이미 연결된 WebSocket이 있으면 재사용
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
