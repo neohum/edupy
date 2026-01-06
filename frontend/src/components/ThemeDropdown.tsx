@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useTheme, themes } from '../context/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
+import { themes } from '../context/themes';
 import './ThemeDropdown.css';
 
 export default function ThemeDropdown() {
