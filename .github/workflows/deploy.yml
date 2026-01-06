@@ -127,6 +127,7 @@ jobs:
             # Create .env file
             echo "🔐 Creating environment file..."
             echo "ENVIRONMENT=production" > /app/edupy/.env
+            echo "DATABASE_URL=postgresql://edupy_user:REDACTED_PG_PASSWORD@host.docker.internal:5432/edupy" >> /app/edupy/.env
             echo "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" >> /app/edupy/.env
             echo "ERROR_REPORT_EMAIL=${{ secrets.ERROR_REPORT_EMAIL }}" >> /app/edupy/.env
             echo "FROM_EMAIL=${{ secrets.FROM_EMAIL }}" >> /app/edupy/.env

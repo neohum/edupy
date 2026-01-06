@@ -1,11 +1,14 @@
 import os
 import sqlite3
+import psycopg2
+import psycopg2.extras
 from datetime import datetime
 from typing import List, Dict, Optional
 import logging
 from functools import wraps
 from cachetools import TTLCache
 import threading
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -47,49 +50,127 @@ def clear_cache():
         _query_cache.clear()
     logger.info("Query cache cleared")
 
+# 데이터베이스 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_PATH = os.path.join(BASE_DIR, "edupy.db")
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'edupy.db')}")
+
+# 데이터베이스 타입 감지
+DB_TYPE = "postgresql" if DATABASE_URL.startswith("postgresql://") or DATABASE_URL.startswith("postgres://") else "sqlite"
+
+logger.info(f"Database type: {DB_TYPE}")
+logger.info(f"Database URL: {DATABASE_URL.replace('password', '***') if 'password' in DATABASE_URL else DATABASE_URL}")
+
+
+class DictRow:
+    """SQLite Row와 유사한 인터페이스를 제공하는 딕셔너리 래퍼"""
+    def __init__(self, data):
+        self._data = data
+
+    def __getitem__(self, key):
+        return self._data[key]
+
+    def keys(self):
+        return self._data.keys()
+
 
 def get_db_connection():
-    """데이터베이스 연결 생성"""
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row  # 딕셔너리 형태로 결과 반환
-    return conn
+    """데이터베이스 연결 생성 (PostgreSQL 또는 SQLite)"""
+    if DB_TYPE == "postgresql":
+        # PostgreSQL 연결
+        try:
+            conn = psycopg2.connect(DATABASE_URL)
+            conn.cursor_factory = psycopg2.extras.DictCursor
+            return conn
+        except Exception as e:
+            logger.error(f"Failed to connect to PostgreSQL: {e}")
+            raise
+    else:
+        # SQLite 연결
+        db_path = DATABASE_URL.replace("sqlite:///", "")
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row  # 딕셔너리 형태로 결과 반환
+        return conn
+
+
+def get_placeholder():
+    """데이터베이스에 맞는 플레이스홀더 반환"""
+    return "%s" if DB_TYPE == "postgresql" else "?"
+
+
+def adapt_query(query: str) -> str:
+    """쿼리를 데이터베이스에 맞게 변환"""
+    if DB_TYPE == "postgresql":
+        # SQLite의 ? placeholder를 PostgreSQL의 %s로 변경
+        return query.replace("?", "%s")
+    return query
 
 def init_database():
     """데이터베이스 초기화 및 테이블 생성"""
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # 오류 보고 테이블 생성
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS error_reports (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            level TEXT NOT NULL,
-            activity TEXT NOT NULL,
-            error_message TEXT NOT NULL,
-            user_code TEXT NOT NULL,
-            fixed_code TEXT,
-            fix_explanation TEXT,
-            timestamp TEXT NOT NULL,
-            resolved BOOLEAN DEFAULT 0,
-            resolved_at DATETIME,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+    if DB_TYPE == "postgresql":
+        # PostgreSQL용 테이블 생성
+        # 오류 보고 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS error_reports (
+                id SERIAL PRIMARY KEY,
+                level TEXT NOT NULL,
+                activity TEXT NOT NULL,
+                error_message TEXT NOT NULL,
+                user_code TEXT NOT NULL,
+                fixed_code TEXT,
+                fix_explanation TEXT,
+                timestamp TEXT NOT NULL,
+                resolved BOOLEAN DEFAULT FALSE,
+                resolved_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
-    # 관리자 테이블 생성
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS admin_users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            totp_secret TEXT,
-            totp_enabled BOOLEAN DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            last_login DATETIME
-        )
-    """)
+        # 관리자 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS admin_users (
+                id SERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                totp_secret TEXT,
+                totp_enabled BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_login TIMESTAMP
+            )
+        """)
+    else:
+        # SQLite용 테이블 생성
+        # 오류 보고 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS error_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                level TEXT NOT NULL,
+                activity TEXT NOT NULL,
+                error_message TEXT NOT NULL,
+                user_code TEXT NOT NULL,
+                fixed_code TEXT,
+                fix_explanation TEXT,
+                timestamp TEXT NOT NULL,
+                resolved BOOLEAN DEFAULT 0,
+                resolved_at DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # 관리자 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS admin_users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                totp_secret TEXT,
+                totp_enabled BOOLEAN DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                last_login DATETIME
+            )
+        """)
 
     # 인덱스 생성 (검색 성능 향상)
     cursor.execute("""
@@ -132,13 +213,14 @@ def check_duplicate_error(level: str, activity: str, error_message: str) -> Opti
     cursor = conn.cursor()
 
     try:
-        cursor.execute("""
+        query = adapt_query("""
             SELECT id, level, activity, error_message, user_code, timestamp, resolved, created_at
             FROM error_reports
             WHERE level = ? AND activity = ? AND error_message = ?
             ORDER BY created_at DESC
             LIMIT 1
-        """, (level, activity, error_message))
+        """)
+        cursor.execute(query, (level, activity, error_message))
 
         row = cursor.fetchone()
 
@@ -174,26 +256,33 @@ def save_error_report(level: str, activity: str, error_message: str, user_code: 
     cursor = conn.cursor()
 
     try:
-        # INSERT OR IGNORE 시도 (UNIQUE 제약조건이 있다면 중복 시 무시)
-        cursor.execute("""
-            INSERT OR IGNORE INTO error_reports (level, activity, error_message, user_code, timestamp)
-            VALUES (?, ?, ?, ?, ?)
-        """, (level, activity, error_message, user_code, timestamp))
+        # 먼저 중복 체크
+        existing_error = check_duplicate_error(level, activity, error_message)
+        if existing_error:
+            logger.info(f"Duplicate error found: ID {existing_error['id']}")
+            return {
+                'success': False,
+                'duplicate': True,
+                'existing_error': existing_error,
+                'message': '이미 접수된 오류입니다.'
+            }
 
-        error_id = cursor.lastrowid
-
-        # lastrowid가 0이면 중복으로 인해 삽입되지 않음
-        if error_id == 0 or cursor.rowcount == 0:
-            # 기존 오류 조회
-            existing_error = check_duplicate_error(level, activity, error_message)
-            if existing_error:
-                logger.info(f"Duplicate error found: ID {existing_error['id']}")
-                return {
-                    'success': False,
-                    'duplicate': True,
-                    'existing_error': existing_error,
-                    'message': '이미 접수된 오류입니다.'
-                }
+        # 새로운 오류 삽입
+        if DB_TYPE == "postgresql":
+            query = adapt_query("""
+                INSERT INTO error_reports (level, activity, error_message, user_code, timestamp)
+                VALUES (?, ?, ?, ?, ?)
+                RETURNING id
+            """)
+            cursor.execute(query, (level, activity, error_message, user_code, timestamp))
+            error_id = cursor.fetchone()[0]
+        else:
+            query = adapt_query("""
+                INSERT INTO error_reports (level, activity, error_message, user_code, timestamp)
+                VALUES (?, ?, ?, ?, ?)
+            """)
+            cursor.execute(query, (level, activity, error_message, user_code, timestamp))
+            error_id = cursor.lastrowid
 
         conn.commit()
 
@@ -490,15 +579,16 @@ def create_admin_user(username: str, password_hash: str) -> bool:
     cursor = conn.cursor()
 
     try:
-        cursor.execute("""
+        query = adapt_query("""
             INSERT INTO admin_users (username, password_hash)
             VALUES (?, ?)
-        """, (username, password_hash))
+        """)
+        cursor.execute(query, (username, password_hash))
 
         conn.commit()
         logger.info(f"Admin user created: {username}")
         return True
-    except sqlite3.IntegrityError:
+    except (sqlite3.IntegrityError, psycopg2.IntegrityError):
         logger.warning(f"Admin user already exists: {username}")
         return False
     except Exception as e:
@@ -514,11 +604,12 @@ def get_admin_user(username: str) -> Optional[Dict]:
     cursor = conn.cursor()
 
     try:
-        cursor.execute("""
+        query = adapt_query("""
             SELECT id, username, password_hash, totp_secret, totp_enabled, created_at, last_login
             FROM admin_users
             WHERE username = ?
-        """, (username,))
+        """)
+        cursor.execute(query, (username,))
 
         row = cursor.fetchone()
         return dict(row) if row else None
@@ -531,11 +622,12 @@ def update_admin_totp(username: str, totp_secret: str, enabled: bool = True) -> 
     cursor = conn.cursor()
 
     try:
-        cursor.execute("""
+        query = adapt_query("""
             UPDATE admin_users
             SET totp_secret = ?, totp_enabled = ?
             WHERE username = ?
-        """, (totp_secret, 1 if enabled else 0, username))
+        """)
+        cursor.execute(query, (totp_secret, 1 if enabled else 0, username))
 
         conn.commit()
         logger.info(f"TOTP updated for admin: {username}")
@@ -553,11 +645,12 @@ def update_admin_last_login(username: str) -> bool:
     cursor = conn.cursor()
 
     try:
-        cursor.execute("""
+        query = adapt_query("""
             UPDATE admin_users
             SET last_login = CURRENT_TIMESTAMP
             WHERE username = ?
-        """, (username,))
+        """)
+        cursor.execute(query, (username,))
 
         conn.commit()
         return True
@@ -575,66 +668,130 @@ def init_analytics_tables():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # 사용자 세션 테이블
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS user_sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT UNIQUE NOT NULL,
-            user_agent TEXT,
-            device_type TEXT,
-            browser TEXT,
-            os TEXT,
-            screen_width INTEGER,
-            screen_height INTEGER,
-            start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-            end_time DATETIME,
-            is_active BOOLEAN DEFAULT 1
-        )
-    """)
+    if DB_TYPE == "postgresql":
+        # PostgreSQL용 테이블 생성
+        # 사용자 세션 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_sessions (
+                id SERIAL PRIMARY KEY,
+                session_id TEXT UNIQUE NOT NULL,
+                user_agent TEXT,
+                device_type TEXT,
+                browser TEXT,
+                os TEXT,
+                screen_width INTEGER,
+                screen_height INTEGER,
+                start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                end_time TIMESTAMP,
+                is_active BOOLEAN DEFAULT TRUE
+            )
+        """)
 
-    # 페이지 조회 테이블
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS page_views (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            page_path TEXT NOT NULL,
-            page_title TEXT,
-            referrer TEXT,
-            duration_seconds INTEGER DEFAULT 0,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+        # 페이지 조회 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS page_views (
+                id SERIAL PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                page_path TEXT NOT NULL,
+                page_title TEXT,
+                referrer TEXT,
+                duration_seconds INTEGER DEFAULT 0,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
-    # 코드 실행 기록 테이블
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS code_executions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            page_path TEXT,
-            curriculum_type TEXT,
-            level_name TEXT,
-            activity_name TEXT,
-            execution_result TEXT,
-            error_message TEXT,
-            execution_time_ms INTEGER,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+        # 코드 실행 기록 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS code_executions (
+                id SERIAL PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                page_path TEXT,
+                curriculum_type TEXT,
+                level_name TEXT,
+                activity_name TEXT,
+                execution_result TEXT,
+                error_message TEXT,
+                execution_time_ms INTEGER,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
-    # 학습 진도 테이블
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS learning_progress (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            curriculum_type TEXT,
-            level_index INTEGER,
-            activity_index INTEGER,
-            total_activities INTEGER,
-            completed_count INTEGER,
-            completion_percentage REAL,
-            last_activity_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+        # 학습 진도 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS learning_progress (
+                id SERIAL PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                curriculum_type TEXT,
+                level_index INTEGER,
+                activity_index INTEGER,
+                total_activities INTEGER,
+                completed_count INTEGER,
+                completion_percentage REAL,
+                last_activity_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+    else:
+        # SQLite용 테이블 생성
+        # 사용자 세션 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT UNIQUE NOT NULL,
+                user_agent TEXT,
+                device_type TEXT,
+                browser TEXT,
+                os TEXT,
+                screen_width INTEGER,
+                screen_height INTEGER,
+                start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                end_time DATETIME,
+                is_active BOOLEAN DEFAULT 1
+            )
+        """)
+
+        # 페이지 조회 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS page_views (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                page_path TEXT NOT NULL,
+                page_title TEXT,
+                referrer TEXT,
+                duration_seconds INTEGER DEFAULT 0,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # 코드 실행 기록 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS code_executions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                page_path TEXT,
+                curriculum_type TEXT,
+                level_name TEXT,
+                activity_name TEXT,
+                execution_result TEXT,
+                error_message TEXT,
+                execution_time_ms INTEGER,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # 학습 진도 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS learning_progress (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                curriculum_type TEXT,
+                level_index INTEGER,
+                activity_index INTEGER,
+                total_activities INTEGER,
+                completed_count INTEGER,
+                completion_percentage REAL,
+                last_activity_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
     # 인덱스 생성
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_session_id ON user_sessions(session_id)")
