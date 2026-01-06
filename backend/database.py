@@ -599,68 +599,68 @@ def update_admin_last_login(username: str) -> bool:
 def init_analytics_tables():
     """분석 테이블 초기화"""
     conn = get_db_connection()
-    cursor = conn.cursor()    else:
-        # SQLite용 테이블 생성
-        # 사용자 세션 테이블
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT UNIQUE NOT NULL,
-                user_agent TEXT,
-                device_type TEXT,
-                browser TEXT,
-                os TEXT,
-                screen_width INTEGER,
-                screen_height INTEGER,
-                start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-                end_time DATETIME,
-                is_active BOOLEAN DEFAULT 1
-            )
-        """)
+    cursor = conn.cursor()
 
-        # 페이지 조회 테이블
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS page_views (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT NOT NULL,
-                page_path TEXT NOT NULL,
-                page_title TEXT,
-                referrer TEXT,
-                duration_seconds INTEGER DEFAULT 0,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+    # 사용자 세션 테이블
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT UNIQUE NOT NULL,
+            user_agent TEXT,
+            device_type TEXT,
+            browser TEXT,
+            os TEXT,
+            screen_width INTEGER,
+            screen_height INTEGER,
+            start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            end_time DATETIME,
+            is_active BOOLEAN DEFAULT 1
+        )
+    """)
 
-        # 코드 실행 기록 테이블
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS code_executions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT NOT NULL,
-                page_path TEXT,
-                curriculum_type TEXT,
-                level_name TEXT,
-                activity_name TEXT,
-                execution_result TEXT,
-                error_message TEXT,
-                execution_time_ms INTEGER,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+    # 페이지 조회 테이블
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS page_views (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            page_path TEXT NOT NULL,
+            page_title TEXT,
+            referrer TEXT,
+            duration_seconds INTEGER DEFAULT 0,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
 
-        # 학습 진도 테이블
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS learning_progress (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT NOT NULL,
-                curriculum_type TEXT,
-                level_index INTEGER,
-                activity_index INTEGER,
-                total_activities INTEGER,
-                completed_count INTEGER,
-                completion_percentage REAL,
-                last_activity_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+    # 코드 실행 기록 테이블
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS code_executions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            page_path TEXT,
+            curriculum_type TEXT,
+            level_name TEXT,
+            activity_name TEXT,
+            execution_result TEXT,
+            error_message TEXT,
+            execution_time_ms INTEGER,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # 학습 진도 테이블
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS learning_progress (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            curriculum_type TEXT,
+            level_index INTEGER,
+            activity_index INTEGER,
+            total_activities INTEGER,
+            completed_count INTEGER,
+            completion_percentage REAL,
+            last_activity_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
 
     # 인덱스 생성
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_session_id ON user_sessions(session_id)")
