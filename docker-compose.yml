@@ -28,7 +28,7 @@ services:
       - "8000:8000"
     environment:
       - ENVIRONMENT=production
-      - DATABASE_URL=${DATABASE_URL:-sqlite:///app/edupy.db}
+      # SQLite database - no DATABASE_URL needed (uses default: /app/edupy.db)
       - RESEND_API_KEY=${RESEND_API_KEY}
       - ERROR_REPORT_EMAIL=${ERROR_REPORT_EMAIL}
       - FROM_EMAIL=${FROM_EMAIL}
