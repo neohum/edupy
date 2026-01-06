@@ -52,6 +52,24 @@ export default function LearningMenuDropdown() {
             </Link>
           </div>
         </div>
+        {/* 알고리즘 학습 서브메뉴 */}
+        <div className="dropdown-submenu">
+          <div className="dropdown-item has-submenu">
+            <i className="fi fi-rr-angle-left submenu-arrow"></i>
+            <span><i className="fi fi-rr-brain"></i> 알고리즘 학습</span>
+          </div>
+          <div className="submenu">
+            <Link to="/learn/algorithm-elementary" className="dropdown-item">
+              <i className="fi fi-rr-smile"></i> 초등학교
+            </Link>
+            <Link to="/learn/algorithm-middle" className="dropdown-item">
+              <i className="fi fi-rr-book-open-cover"></i> 중학교
+            </Link>
+            <Link to="/learn/algorithm-high" className="dropdown-item">
+              <i className="fi fi-rr-diploma"></i> 고등학교
+            </Link>
+          </div>
+        </div>
         <Link to="/pygame-games" className="dropdown-item">
           <i className="fi fi-rr-gamepad"></i> 파이게임 만들기
         </Link>

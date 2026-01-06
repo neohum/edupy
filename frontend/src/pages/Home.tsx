@@ -15,7 +15,7 @@ export default function Home() {
             파이썬 학습의 모든 것
           </h2>
           <p className="hero-subtitle">
-            타이핑 연습부터 파이썬 학습, 파이게임 기초 문법, 데이터 분석과 시각화, AI 코딩, 게임 만들기까지<br />
+            타이핑 연습부터 파이썬 학습, 파이게임 기초 문법, 데이터 분석과 시각화, AI 코딩, 알고리즘 학습, 게임 만들기까지<br />
             <strong>회원가입 없이</strong> 바로 시작하세요!
           </p>
           <div className="hero-badges">
@@ -29,7 +29,7 @@ export default function Home() {
       {/* Features Section */}
       <section id="features" className="features">
         <div className="container">
-          <h3 className="section-title">여섯 가지 학습 모드</h3>
+          <h3 className="section-title">일곱 가지 학습 모드</h3>
 
           <div className="feature-grid">
             {/* Feature 1: 타이핑 연습 */}
@@ -106,7 +106,22 @@ export default function Home() {
               <Link to="/ai" className="btn btn-primary">시작하기</Link>
             </div>
 
-            {/* Feature 6: 파이게임 만들기 */}
+            {/* Feature 6: 알고리즘 학습 */}
+            <div className="feature-card">
+              <div className="feature-badge">NEW</div>
+              <div className="feature-icon"><i className="fi fi-rr-brain"></i></div>
+              <h4>알고리즘 학습</h4>
+              <p>논리적 사고력을 키우는 알고리즘</p>
+              <ul className="feature-list">
+                <li>초등: 순차/선택/반복, 탐색, 정렬</li>
+                <li>중등: 이진탐색, 재귀, 스택/큐</li>
+                <li>고등: DP, 그래프, 고급 자료구조</li>
+                <li>코딩 테스트 대비 완벽 대비</li>
+              </ul>
+              <Link to="/algorithm" className="btn btn-primary">시작하기</Link>
+            </div>
+
+            {/* Feature 7: 파이게임 만들기 */}
             <div className="feature-card">
               <div className="feature-icon"><i className="fi fi-rr-gamepad"></i></div>
               <h4>파이게임 만들기</h4>

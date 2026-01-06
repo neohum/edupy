@@ -30,6 +30,7 @@ services:
       - "8000:8000"
     environment:
       - ENVIRONMENT=production
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///app/edupy.db}
       - RESEND_API_KEY=${RESEND_API_KEY}
       - ERROR_REPORT_EMAIL=${ERROR_REPORT_EMAIL}
       - FROM_EMAIL=${FROM_EMAIL}
@@ -39,9 +40,12 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     volumes:
       - ./data:/app/data
-      - backend-db:/app/db
+      - ./backend/edupy.db:/app/edupy.db
+      - backend-uploads:/app/uploads
     networks:
       - edupy-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 30s
@@ -54,5 +58,5 @@ networks:
     driver: bridge
 
 volumes:
-  backend-db:
+  backend-uploads:
     driver: local

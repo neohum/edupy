@@ -287,6 +287,19 @@ async def disable_2fa(request: Verify2FARequest, username: str = Depends(verify_
 
     return {"success": True, "message": "2FA disabled successfully"}
 
+@app.get("/api/admin/env-status")
+async def check_env_status(username: str = Depends(verify_token)):
+    """환경 변수 상태 확인 (관리자 전용)"""
+    return {
+        "environment": ENVIRONMENT,
+        "debug": DEBUG,
+        "error_report_email": os.getenv("ERROR_REPORT_EMAIL"),
+        "from_email": os.getenv("FROM_EMAIL"),
+        "resend_api_key_configured": bool(os.getenv("RESEND_API_KEY")),
+        "resend_api_key_loaded": bool(resend.api_key),
+        "cors_origins": CORS_ORIGINS
+    }
+
 # 타이핑 레슨 API (나중에 구현)
 @app.get("/api/typing/lessons")
 async def get_typing_lessons():
@@ -720,9 +733,17 @@ async def send_error_report(report: ErrorReport):
             "html": html_content,
         }
 
-        email = resend.Emails.send(params)
+        logger.info(f"Attempting to send email with Resend API")
+        logger.debug(f"Email params: from={from_email}, to={to_email}")
 
-        logger.info(f"Email sent successfully. ID: {email.get('id')}")
+        try:
+            email = resend.Emails.send(params)
+            logger.info(f"Email sent successfully. ID: {email.get('id')}")
+        except Exception as email_error:
+            logger.error(f"Resend API error: {str(email_error)}")
+            logger.error(f"Resend API key present: {bool(resend.api_key)}")
+            logger.error(f"FROM_EMAIL: {from_email}, TO_EMAIL: {to_email}")
+            raise email_error
 
         return {
             "success": True,

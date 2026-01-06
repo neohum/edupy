@@ -12,6 +12,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import NewThemes from './pages/NewThemes';
 import DataCurriculumSelect from './pages/DataCurriculumSelect';
 import AICurriculumSelect from './pages/AICurriculumSelect';
+import AlgorithmCurriculumSelect from './pages/AlgorithmCurriculumSelect';
 import CurriculumLearning from './pages/CurriculumLearning';
 import { setupSessionTracking, trackPageView, trackPageLeave } from './utils/analytics';
 import './App.css';
@@ -56,6 +57,7 @@ function App() {
           <Route path="/new" element={<NewThemes />} />
           <Route path="/data" element={<DataCurriculumSelect />} />
           <Route path="/ai" element={<AICurriculumSelect />} />
+          <Route path="/algorithm" element={<AlgorithmCurriculumSelect />} />
           <Route path="/learn/:curriculumId" element={<CurriculumLearning />} />
         </Routes>
       </Router>

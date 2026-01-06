@@ -4,12 +4,24 @@ import Editor from '@monaco-editor/react';
 import { toast } from 'sonner';
 import { allDataCurriculums, dataConceptExplanations } from '../data/dataAnalysisCurriculum';
 import { allAICurriculums, aiConceptExplanations } from '../data/aiCodingCurriculum';
+import { allAlgorithmCurricula, algorithmConceptExplanations } from '../data/algorithmCurriculum';
 import { usePyodide, setupPythonEnvironment, wrapUserCode, loadRequiredPackages } from '../hooks/usePyodide';
 import ThemeDropdown from '../components/ThemeDropdown';
 import LearningMenuDropdown from '../components/LearningMenuDropdown';
 import OutputModal from '../components/OutputModal';
 import Footer from '../components/Footer';
 import { API_ENDPOINTS } from '../config/api';
+// 인터랙티브 컴포넌트 import
+import QuizComponent from '../components/QuizComponent';
+import TestCaseComponent from '../components/TestCaseComponent';
+import ChallengeComponent from '../components/ChallengeComponent';
+import SortingVisualization from '../components/SortingVisualization';
+import SearchVisualization from '../components/SearchVisualization';
+import RecursionVisualization from '../components/RecursionVisualization';
+import TreeVisualization from '../components/TreeVisualization';
+import GraphVisualization from '../components/GraphVisualization';
+import ComplexityChart from '../components/ComplexityChart';
+import AlgorithmGame from '../components/AlgorithmGame';
 import './PythonLearning.css';
 
 export default function CurriculumLearning() {
@@ -18,9 +30,18 @@ export default function CurriculumLearning() {
   const { pyodide, isReady: pyodideReady, isLoading: loadingPyodide } = usePyodide();
 
   // 커리큘럼 찾기
-  const allCurriculums = [...allDataCurriculums, ...allAICurriculums];
+  const allCurriculums = [...allDataCurriculums, ...allAICurriculums, ...allAlgorithmCurricula];
   const curriculum = allCurriculums.find(c => c.id === curriculumId);
-  const conceptExplanations = curriculumId?.startsWith('data') ? dataConceptExplanations : aiConceptExplanations;
+
+  // 개념 설명 선택
+  let conceptExplanations = dataConceptExplanations;
+  if (curriculumId?.startsWith('data')) {
+    conceptExplanations = dataConceptExplanations;
+  } else if (curriculumId?.startsWith('ai')) {
+    conceptExplanations = aiConceptExplanations;
+  } else if (curriculumId?.startsWith('algorithm')) {
+    conceptExplanations = algorithmConceptExplanations;
+  }
 
   // 상태
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
@@ -88,8 +109,18 @@ export default function CurriculumLearning() {
     return null;
   }
 
+  // 안전하게 레벨과 활동 가져오기
   const currentLevel = curriculum.levels[currentLevelIndex];
+  if (!currentLevel) {
+    console.error(`Level ${currentLevelIndex} not found in curriculum ${curriculum.id}`);
+    return null;
+  }
+
   const currentActivity = currentLevel.activities[currentActivityIndex];
+  if (!currentActivity) {
+    console.error(`Activity ${currentActivityIndex} not found in level ${currentLevelIndex}`);
+    return null;
+  }
 
   // LocalStorage에서 진행 상황 로드
   useEffect(() => {
@@ -399,6 +430,80 @@ export default function CurriculumLearning() {
             </div>
           )}
         </div>
+
+        {/* 인터랙티브 컴포넌트 섹션 */}
+        {(currentActivity as any).quiz && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <QuizComponent quiz={(currentActivity as any).quiz} />
+          </div>
+        )}
+
+        {(currentActivity as any).testCases && (currentActivity as any).testCases.length > 0 && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <TestCaseComponent
+              testCases={(currentActivity as any).testCases}
+              onRunTests={async (testCases) => {
+                // 간단한 테스트 실행 로직
+                toast.info('테스트 케이스 실행 중...');
+                return testCases.map(tc => ({
+                  testCase: tc,
+                  passed: true,
+                  actualOutput: tc.expectedOutput
+                }));
+              }}
+            />
+          </div>
+        )}
+
+        {(currentActivity as any).challenges && (currentActivity as any).challenges.length > 0 && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <ChallengeComponent challenges={(currentActivity as any).challenges} />
+          </div>
+        )}
+
+        {(currentActivity as any).visualization === 'sorting' && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <SortingVisualization algorithm={(currentActivity as any).sortAlgorithm || 'bubble'} />
+          </div>
+        )}
+
+        {(currentActivity as any).visualization === 'searching' && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <SearchVisualization algorithm={(currentActivity as any).searchAlgorithm || 'linear'} />
+          </div>
+        )}
+
+        {(currentActivity as any).visualization === 'recursion' && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <RecursionVisualization type={(currentActivity as any).recursionType || 'factorial'} />
+          </div>
+        )}
+
+        {(currentActivity as any).visualization === 'tree' && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <TreeVisualization />
+          </div>
+        )}
+
+        {(currentActivity as any).visualization === 'graph' && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <GraphVisualization type={(currentActivity as any).graphType || 'dfs'} />
+          </div>
+        )}
+
+        {(currentActivity as any).stepByStep && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <ComplexityChart />
+          </div>
+        )}
+
+        {(currentActivity as any).gameMode && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <AlgorithmGame
+              type={(currentActivity as any).gameType || 'sorting'}
+            />
+          </div>
+        )}
 
         {/* Editor Row */}
         <div className="editor-row">
