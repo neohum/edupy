@@ -1166,6 +1166,9 @@ export default function PygameLearning() {
         errorInfo={errorInfo}
         level={`Level ${currentLevel.level}: ${currentLevel.title}`}
         activity={`${currentActivity.id} - ${currentActivity.title}`}
+        showNewWindowButton={currentLevel.level === 11 || !!gameImage}
+        onOpenNewWindow={handleRunInNewWindow}
+        isLaunchingNewWindow={isLaunchingNewWindow}
       />
 
       <Footer />

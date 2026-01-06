@@ -609,6 +609,9 @@ export default function PygameGames() {
         errorInfo={hasError ? { message: output, code: code } : null}
         level={`Level ${currentLevel.level}: ${currentLevel.title}`}
         activity={`${currentActivity.id} - ${currentActivity.title}`}
+        showNewWindowButton={true}
+        onOpenNewWindow={handleRunInNewWindow}
+        isLaunchingNewWindow={isLaunchingNewWindow}
       />
 
       <Footer />

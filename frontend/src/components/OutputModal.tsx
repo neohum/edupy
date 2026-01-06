@@ -38,6 +38,11 @@ interface OutputModalProps {
   errorInfo?: { message: string; code: string } | null;
   level?: string;
   activity?: string;
+
+  // New window button
+  showNewWindowButton?: boolean;
+  onOpenNewWindow?: () => void;
+  isLaunchingNewWindow?: boolean;
 }
 
 export default function OutputModal({
@@ -66,6 +71,9 @@ export default function OutputModal({
   errorInfo,
   level,
   activity,
+  showNewWindowButton = false,
+  onOpenNewWindow,
+  isLaunchingNewWindow = false,
 }: OutputModalProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
@@ -135,6 +143,45 @@ export default function OutputModal({
             {isRunning && <span className="running-indicator"><i className="fi fi-rr-spinner"></i> 실행 중...</span>}
           </div>
           <div className="output-modal-actions">
+            {showNewWindowButton && onOpenNewWindow && (
+              <button
+                className="new-window-button"
+                onClick={onOpenNewWindow}
+                disabled={isLaunchingNewWindow}
+                title="새 창에서 실행"
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: isLaunchingNewWindow
+                    ? 'linear-gradient(135deg, #718096 0%, #4a5568 100%)'
+                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '0.85rem',
+                  fontWeight: '600',
+                  cursor: isLaunchingNewWindow ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  marginRight: '0.5rem',
+                }}
+              >
+                {isLaunchingNewWindow ? (
+                  <>
+                    <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>
+                      <i className="fi fi-rr-spinner"></i>
+                    </span>
+                    시작 중...
+                  </>
+                ) : (
+                  <>
+                    <i className="fi fi-rr-display"></i>
+                    새 창에서 열기
+                  </>
+                )}
+              </button>
+            )}
             {errorInfo && level && activity && (
               <ErrorReportButton
                 errorInfo={errorInfo}
