@@ -3,8 +3,49 @@ import sqlite3
 from datetime import datetime
 from typing import List, Dict, Optional
 import logging
+from functools import wraps
+from cachetools import TTLCache
+import threading
 
 logger = logging.getLogger(__name__)
+
+# 캐시 설정 (TTL: 5분, 최대 100개 항목)
+_query_cache = TTLCache(maxsize=100, ttl=300)
+_cache_lock = threading.Lock()
+
+
+def cached(cache_key_func):
+    """쿼리 결과 캐싱 데코레이터"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # 캐시 키 생성
+            cache_key = cache_key_func(*args, **kwargs)
+
+            # 캐시에서 조회
+            with _cache_lock:
+                if cache_key in _query_cache:
+                    logger.debug(f"Cache hit: {cache_key}")
+                    return _query_cache[cache_key]
+
+            # 캐시 미스 - 실제 쿼리 실행
+            result = func(*args, **kwargs)
+
+            # 결과 캐싱
+            with _cache_lock:
+                _query_cache[cache_key] = result
+
+            logger.debug(f"Cache miss: {cache_key}")
+            return result
+        return wrapper
+    return decorator
+
+
+def clear_cache():
+    """캐시 수동 클리어"""
+    with _cache_lock:
+        _query_cache.clear()
+    logger.info("Query cache cleared")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE_PATH = os.path.join(BASE_DIR, "edupy.db")
@@ -119,7 +160,7 @@ def check_duplicate_error(level: str, activity: str, error_message: str) -> Opti
 
 def save_error_report(level: str, activity: str, error_message: str, user_code: str, timestamp: str) -> Dict:
     """
-    오류 보고 저장 (중복 체크 포함)
+    오류 보고 저장 (최적화된 중복 체크)
 
     Returns:
         dict: {
@@ -129,30 +170,35 @@ def save_error_report(level: str, activity: str, error_message: str, user_code: 
             'existing_error': dict (중복인 경우)
         }
     """
-    # 중복 체크
-    existing_error = check_duplicate_error(level, activity, error_message)
-
-    if existing_error:
-        logger.info(f"Duplicate error found: ID {existing_error['id']}")
-        return {
-            'success': False,
-            'duplicate': True,
-            'existing_error': existing_error,
-            'message': '이미 접수된 오류입니다.'
-        }
-
-    # 중복이 아니면 새로 저장
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
+        # INSERT OR IGNORE 시도 (UNIQUE 제약조건이 있다면 중복 시 무시)
         cursor.execute("""
-            INSERT INTO error_reports (level, activity, error_message, user_code, timestamp)
+            INSERT OR IGNORE INTO error_reports (level, activity, error_message, user_code, timestamp)
             VALUES (?, ?, ?, ?, ?)
         """, (level, activity, error_message, user_code, timestamp))
 
         error_id = cursor.lastrowid
+
+        # lastrowid가 0이면 중복으로 인해 삽입되지 않음
+        if error_id == 0 or cursor.rowcount == 0:
+            # 기존 오류 조회
+            existing_error = check_duplicate_error(level, activity, error_message)
+            if existing_error:
+                logger.info(f"Duplicate error found: ID {existing_error['id']}")
+                return {
+                    'success': False,
+                    'duplicate': True,
+                    'existing_error': existing_error,
+                    'message': '이미 접수된 오류입니다.'
+                }
+
         conn.commit()
+
+        # 캐시 무효화
+        clear_cache()
 
         logger.info(f"New error report saved with ID: {error_id}")
         return {
@@ -283,8 +329,9 @@ def get_error_reports(limit: int = 100, offset: int = 0, filter_status: str = 'a
     finally:
         conn.close()
 
+@cached(lambda: "error_statistics")
 def get_error_statistics() -> Dict:
-    """오류 통계 조회 (최적화된 단일 연결)"""
+    """오류 통계 조회 (캐싱 적용)"""
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -400,6 +447,10 @@ def toggle_error_resolved(error_id: int) -> bool:
             """, (error_id,))
 
         conn.commit()
+
+        # 캐시 무효화
+        clear_cache()
+
         logger.info(f"Error {error_id} resolved status changed to {new_status}")
         return True
     except Exception as e:
@@ -746,8 +797,9 @@ def save_learning_progress(session_id: str, curriculum_type: str, level_index: i
     finally:
         conn.close()
 
+@cached(lambda days=7: f"analytics_overview_{days}")
 def get_analytics_overview(days: int = 7) -> Dict:
-    """분석 개요 통계 조회"""
+    """분석 개요 통계 조회 (캐싱 적용)"""
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -873,8 +925,9 @@ def get_page_view_stats(days: int = 7) -> List[Dict]:
     finally:
         conn.close()
 
+@cached(lambda: "device_distribution")
 def get_device_distribution() -> Dict:
-    """기기 및 브라우저 분포"""
+    """기기 및 브라우저 분포 (캐싱 적용)"""
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -917,8 +970,9 @@ def get_device_distribution() -> Dict:
     finally:
         conn.close()
 
+@cached(lambda days=7: f"code_execution_stats_{days}")
 def get_code_execution_stats(days: int = 7) -> Dict:
-    """코드 실행 통계"""
+    """코드 실행 통계 (캐싱 적용)"""
     conn = get_db_connection()
     cursor = conn.cursor()
 
