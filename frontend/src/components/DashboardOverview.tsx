@@ -51,6 +51,18 @@ interface HourlyActivity {
   activity_count: number;
 }
 
+interface MonthlyVisitor {
+  month: string;
+  visitors: number;
+  sessions: number;
+}
+
+interface DailyMonthVisitor {
+  date: string;
+  visitors: number;
+  sessions: number;
+}
+
 export default function DashboardOverview() {
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [dailyVisitors, setDailyVisitors] = useState<DailyVisitor[]>([]);
@@ -61,25 +73,51 @@ export default function DashboardOverview() {
   const [hourlyActivity, setHourlyActivity] = useState<HourlyActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDays, setSelectedDays] = useState(7);
+  const [viewMode, setViewMode] = useState<'days' | 'year' | 'month'>('days');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
+  const [yearlyVisitors, setYearlyVisitors] = useState<MonthlyVisitor[]>([]);
+  const [monthlyDailyVisitors, setMonthlyDailyVisitors] = useState<DailyMonthVisitor[]>([]);
 
   const visitorsChartRef = useRef<SVGSVGElement>(null);
   const pageViewsChartRef = useRef<SVGSVGElement>(null);
   const deviceChartRef = useRef<SVGSVGElement>(null);
   const codeStatsChartRef = useRef<SVGSVGElement>(null);
   const hourlyChartRef = useRef<SVGSVGElement>(null);
+  const yearlyChartRef = useRef<SVGSVGElement>(null);
+  const monthlyChartRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
-    loadAllData();
-  }, [selectedDays]);
+    if (viewMode === 'days') {
+      loadAllData();
+    } else if (viewMode === 'year') {
+      loadYearlyData();
+    } else {
+      loadMonthlyData();
+    }
+  }, [selectedDays, viewMode, selectedYear, selectedMonth]);
 
   useEffect(() => {
-    if (dailyVisitors.length > 0) {
+    if (viewMode === 'days' && dailyVisitors.length > 0) {
       drawVisitorsChart();
     }
   }, [dailyVisitors]);
 
   useEffect(() => {
-    if (pageViews.length > 0) {
+    if (viewMode === 'year' && yearlyVisitors.length > 0) {
+      drawYearlyChart();
+    }
+  }, [yearlyVisitors]);
+
+  useEffect(() => {
+    if (viewMode === 'month' && monthlyDailyVisitors.length > 0) {
+      drawMonthlyChart();
+    }
+  }, [monthlyDailyVisitors]);
+
+  useEffect(() => {
+    if (viewMode === 'days' && pageViews.length > 0) {
       drawPageViewsChart();
     }
   }, [pageViews]);
@@ -101,6 +139,60 @@ export default function DashboardOverview() {
       drawHourlyChart();
     }
   }, [hourlyActivity]);
+
+  const loadYearlyData = async () => {
+    setIsLoading(true);
+    const token = localStorage.getItem('admin_token');
+    const headers = { 'Authorization': `Bearer ${token}` };
+
+    try {
+      const [yearsRes, yearlyRes] = await Promise.all([
+        fetch(API_ENDPOINTS.analyticsAvailableYears, { headers }),
+        fetch(`${API_ENDPOINTS.analyticsYearlyVisitors}?year=${selectedYear}`, { headers }),
+      ]);
+
+      if (yearsRes.ok) {
+        const data = await yearsRes.json();
+        setAvailableYears(data.data || [new Date().getFullYear()]);
+      }
+
+      if (yearlyRes.ok) {
+        const data = await yearlyRes.json();
+        setYearlyVisitors(data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to load yearly data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadMonthlyData = async () => {
+    setIsLoading(true);
+    const token = localStorage.getItem('admin_token');
+    const headers = { 'Authorization': `Bearer ${token}` };
+
+    try {
+      const [yearsRes, monthlyRes] = await Promise.all([
+        fetch(API_ENDPOINTS.analyticsAvailableYears, { headers }),
+        fetch(`${API_ENDPOINTS.analyticsMonthlyVisitors}?year=${selectedYear}&month=${selectedMonth}`, { headers }),
+      ]);
+
+      if (yearsRes.ok) {
+        const data = await yearsRes.json();
+        setAvailableYears(data.data || [new Date().getFullYear()]);
+      }
+
+      if (monthlyRes.ok) {
+        const data = await monthlyRes.json();
+        setMonthlyDailyVisitors(data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to load monthly data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loadAllData = async () => {
     setIsLoading(true);
@@ -157,6 +249,144 @@ export default function DashboardOverview() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const drawMonthlyChart = () => {
+    if (!monthlyChartRef.current || monthlyDailyVisitors.length === 0) return;
+
+    const svg = d3.select(monthlyChartRef.current);
+    svg.selectAll('*').remove();
+
+    const margin = { top: 20, right: 30, bottom: 50, left: 50 };
+    const width = 560 - margin.left - margin.right;
+    const height = 260 - margin.top - margin.bottom;
+
+    const g = svg
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.top + margin.bottom)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleBand()
+      .domain(monthlyDailyVisitors.map(d => d.date))
+      .range([0, width])
+      .padding(0.2);
+
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(monthlyDailyVisitors, d => d.visitors) || 10])
+      .nice()
+      .range([height, 0]);
+
+    g.selectAll('.bar')
+      .data(monthlyDailyVisitors)
+      .enter()
+      .append('rect')
+      .attr('class', 'bar')
+      .attr('x', d => x(d.date) || 0)
+      .attr('y', d => y(d.visitors))
+      .attr('width', x.bandwidth())
+      .attr('height', d => height - y(d.visitors))
+      .attr('fill', '#764ba2')
+      .attr('rx', 3);
+
+    g.selectAll('.label')
+      .data(monthlyDailyVisitors)
+      .enter()
+      .append('text')
+      .attr('class', 'label')
+      .attr('x', d => (x(d.date) || 0) + x.bandwidth() / 2)
+      .attr('y', d => y(d.visitors) - 4)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#555')
+      .attr('font-size', '9px')
+      .text(d => d.visitors > 0 ? d.visitors : '');
+
+    // X축: 5일 간격으로만 레이블 표시
+    g.append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(
+        d3.axisBottom(x).tickFormat((d, i) => {
+          const day = Number(d.split('-')[2]);
+          return (day === 1 || day % 5 === 0) ? `${day}일` : '';
+        })
+      )
+      .selectAll('text')
+      .attr('fill', '#666')
+      .attr('font-size', '11px');
+
+    g.append('g')
+      .call(d3.axisLeft(y).ticks(5))
+      .selectAll('text')
+      .attr('fill', '#666');
+  };
+
+  const drawYearlyChart = () => {
+    if (!yearlyChartRef.current || yearlyVisitors.length === 0) return;
+
+    const svg = d3.select(yearlyChartRef.current);
+    svg.selectAll('*').remove();
+
+    const margin = { top: 20, right: 30, bottom: 50, left: 50 };
+    const width = 560 - margin.left - margin.right;
+    const height = 260 - margin.top - margin.bottom;
+
+    const g = svg
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.top + margin.bottom)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const monthLabels = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+
+    const x = d3.scaleBand()
+      .domain(yearlyVisitors.map(d => d.month))
+      .range([0, width])
+      .padding(0.25);
+
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(yearlyVisitors, d => d.visitors) || 10])
+      .nice()
+      .range([height, 0]);
+
+    // Bars
+    g.selectAll('.bar')
+      .data(yearlyVisitors)
+      .enter()
+      .append('rect')
+      .attr('class', 'bar')
+      .attr('x', d => x(d.month) || 0)
+      .attr('y', d => y(d.visitors))
+      .attr('width', x.bandwidth())
+      .attr('height', d => height - y(d.visitors))
+      .attr('fill', '#667eea')
+      .attr('rx', 4);
+
+    // Value labels
+    g.selectAll('.label')
+      .data(yearlyVisitors)
+      .enter()
+      .append('text')
+      .attr('class', 'label')
+      .attr('x', d => (x(d.month) || 0) + x.bandwidth() / 2)
+      .attr('y', d => y(d.visitors) - 5)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#555')
+      .attr('font-size', '11px')
+      .text(d => d.visitors > 0 ? d.visitors : '');
+
+    // X Axis
+    g.append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(x).tickFormat((d, i) => monthLabels[i]))
+      .selectAll('text')
+      .attr('fill', '#666')
+      .attr('font-size', '11px');
+
+    // Y Axis
+    g.append('g')
+      .call(d3.axisLeft(y).ticks(5))
+      .selectAll('text')
+      .attr('fill', '#666');
   };
 
   const drawVisitorsChart = () => {
@@ -575,24 +805,58 @@ export default function DashboardOverview() {
       <div className="period-selector">
         <span>기간:</span>
         <button
-          className={selectedDays === 7 ? 'active' : ''}
-          onClick={() => setSelectedDays(7)}
+          className={viewMode === 'days' && selectedDays === 7 ? 'active' : ''}
+          onClick={() => { setViewMode('days'); setSelectedDays(7); }}
         >
           7일
         </button>
         <button
-          className={selectedDays === 14 ? 'active' : ''}
-          onClick={() => setSelectedDays(14)}
+          className={viewMode === 'days' && selectedDays === 14 ? 'active' : ''}
+          onClick={() => { setViewMode('days'); setSelectedDays(14); }}
         >
           14일
         </button>
         <button
-          className={selectedDays === 30 ? 'active' : ''}
-          onClick={() => setSelectedDays(30)}
+          className={viewMode === 'days' && selectedDays === 30 ? 'active' : ''}
+          onClick={() => { setViewMode('days'); setSelectedDays(30); }}
         >
           30일
         </button>
-        <button className="refresh-btn" onClick={loadAllData}>
+        <button
+          className={viewMode === 'year' ? 'active' : ''}
+          onClick={() => setViewMode('year')}
+        >
+          연도별
+        </button>
+        <button
+          className={viewMode === 'month' ? 'active' : ''}
+          onClick={() => setViewMode('month')}
+        >
+          월별
+        </button>
+        {(viewMode === 'year' || viewMode === 'month') && (
+          <select
+            className="year-select"
+            value={selectedYear}
+            onChange={e => setSelectedYear(Number(e.target.value))}
+          >
+            {availableYears.map(y => (
+              <option key={y} value={y}>{y}년</option>
+            ))}
+          </select>
+        )}
+        {viewMode === 'month' && (
+          <select
+            className="year-select"
+            value={selectedMonth}
+            onChange={e => setSelectedMonth(Number(e.target.value))}
+          >
+            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+              <option key={m} value={m}>{m}월</option>
+            ))}
+          </select>
+        )}
+        <button className="refresh-btn" onClick={viewMode === 'year' ? loadYearlyData : viewMode === 'month' ? loadMonthlyData : loadAllData}>
           <i className="fi fi-rr-refresh"></i>
         </button>
       </div>
@@ -659,14 +923,32 @@ export default function DashboardOverview() {
       {/* 차트 그리드 */}
       <div className="charts-grid">
         {/* 방문자 추이 차트 */}
-        <div className="chart-card">
-          <h3><i className="fi fi-rr-chart-line-up"></i> 일별 방문자 추이</h3>
-          {dailyVisitors.length > 0 ? (
-            <svg ref={visitorsChartRef}></svg>
-          ) : (
-            <div className="no-data">데이터가 없습니다</div>
-          )}
-        </div>
+        {viewMode === 'days' && (
+          <div className="chart-card">
+            <h3><i className="fi fi-rr-chart-line-up"></i> 일별 방문자 추이</h3>
+            {dailyVisitors.length > 0 ? (
+              <svg ref={visitorsChartRef}></svg>
+            ) : (
+              <div className="no-data">데이터가 없습니다</div>
+            )}
+          </div>
+        )}
+        {viewMode === 'year' && (
+          <div className="chart-card">
+            <h3><i className="fi fi-rr-chart-line-up"></i> {selectedYear}년 월별 방문자</h3>
+            <svg ref={yearlyChartRef}></svg>
+          </div>
+        )}
+        {viewMode === 'month' && (
+          <div className="chart-card">
+            <h3><i className="fi fi-rr-chart-line-up"></i> {selectedYear}년 {selectedMonth}월 일별 방문자</h3>
+            {monthlyDailyVisitors.length > 0 ? (
+              <svg ref={monthlyChartRef}></svg>
+            ) : (
+              <div className="no-data">데이터가 없습니다</div>
+            )}
+          </div>
+        )}
 
         {/* 페이지별 조회수 */}
         <div className="chart-card">

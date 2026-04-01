@@ -940,6 +940,95 @@ def get_daily_visitors(days: int = 7) -> List[Dict]:
     finally:
         conn.close()
 
+
+def get_yearly_visitors(year: int) -> List[Dict]:
+    """연도별 월간 방문자 추이"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT
+                strftime('%Y-%m', start_time) as month,
+                COUNT(DISTINCT session_id) as visitors,
+                COUNT(*) as sessions
+            FROM user_sessions
+            WHERE strftime('%Y', start_time) = ?
+            GROUP BY strftime('%Y-%m', start_time)
+            ORDER BY month ASC
+        """, (str(year),))
+
+        rows = [dict(row) for row in cursor.fetchall()]
+        months_data = {row['month']: row for row in rows}
+        result = []
+        for m in range(1, 13):
+            month_str = f"{year}-{m:02d}"
+            if month_str in months_data:
+                result.append(months_data[month_str])
+            else:
+                result.append({'month': month_str, 'visitors': 0, 'sessions': 0})
+        return result
+    finally:
+        conn.close()
+
+
+def get_monthly_visitors(year: int, month: int) -> List[Dict]:
+    """월별 일간 방문자 추이"""
+    import calendar
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT
+                DATE(start_time) as date,
+                COUNT(DISTINCT session_id) as visitors,
+                COUNT(*) as sessions
+            FROM user_sessions
+            WHERE strftime('%Y', start_time) = ?
+              AND strftime('%m', start_time) = ?
+            GROUP BY DATE(start_time)
+            ORDER BY date ASC
+        """, (str(year), f"{month:02d}"))
+
+        rows = [dict(row) for row in cursor.fetchall()]
+        days_data = {row['date']: row for row in rows}
+        _, days_in_month = calendar.monthrange(year, month)
+        result = []
+        for d in range(1, days_in_month + 1):
+            date_str = f"{year}-{month:02d}-{d:02d}"
+            if date_str in days_data:
+                result.append(days_data[date_str])
+            else:
+                result.append({'date': date_str, 'visitors': 0, 'sessions': 0})
+        return result
+    finally:
+        conn.close()
+
+
+def get_available_years() -> List[int]:
+    """데이터가 존재하는 연도 목록 조회"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT DISTINCT strftime('%Y', start_time) as year
+            FROM user_sessions
+            ORDER BY year DESC
+        """)
+        years = [int(row['year']) for row in cursor.fetchall()]
+        import datetime
+        current_year = datetime.datetime.now().year
+        for y in [2025, current_year]:
+            if y not in years:
+                years.append(y)
+        years.sort(reverse=True)
+        return years
+    finally:
+        conn.close()
+
+
 def get_page_view_stats(days: int = 7) -> List[Dict]:
     """페이지별 조회수 통계"""
     conn = get_db_connection()

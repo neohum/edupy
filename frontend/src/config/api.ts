@@ -62,6 +62,9 @@ export const API_ENDPOINTS = {
   analyticsCodeStats: `${API_BASE_URL}/api/analytics/code-stats`,
   analyticsRecentActivity: `${API_BASE_URL}/api/analytics/recent-activity`,
   analyticsHourlyActivity: `${API_BASE_URL}/api/analytics/hourly-activity`,
+  analyticsYearlyVisitors: `${API_BASE_URL}/api/analytics/yearly-visitors`,
+  analyticsMonthlyVisitors: `${API_BASE_URL}/api/analytics/monthly-visitors`,
+  analyticsAvailableYears: `${API_BASE_URL}/api/analytics/available-years`,
 };
 
 // WebSocket 엔드포인트

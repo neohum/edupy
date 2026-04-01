@@ -33,7 +33,8 @@ from database import (
     # Analytics functions
     save_session, update_session_end, save_page_view, update_page_view_duration,
     save_code_execution, save_learning_progress, get_analytics_overview,
-    get_daily_visitors, get_page_view_stats, get_device_distribution,
+    get_daily_visitors, get_yearly_visitors, get_monthly_visitors, get_available_years,
+    get_page_view_stats, get_device_distribution,
     get_code_execution_stats, get_recent_activity, get_hourly_activity
 )
 
@@ -1648,6 +1649,50 @@ async def get_hourly(days: int = 1, username: str = Depends(verify_token)):
     except Exception as e:
         logger.error(f"Failed to get hourly activity: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/analytics/yearly-visitors")
+async def get_yearly(year: int = None, username: str = Depends(verify_token)):
+    """연도별 월간 방문자 추이 조회 (관리자 전용)"""
+    try:
+        import datetime
+        if year is None:
+            year = datetime.datetime.now().year
+        data = get_yearly_visitors(year)
+        logger.info(f"Yearly visitors requested by admin: {username}")
+        return {"success": True, "data": data}
+    except Exception as e:
+        logger.error(f"Failed to get yearly visitors: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/analytics/monthly-visitors")
+async def get_monthly(year: int = None, month: int = None, username: str = Depends(verify_token)):
+    """월별 일간 방문자 추이 조회 (관리자 전용)"""
+    try:
+        import datetime
+        now = datetime.datetime.now()
+        if year is None:
+            year = now.year
+        if month is None:
+            month = now.month
+        data = get_monthly_visitors(year, month)
+        logger.info(f"Monthly visitors requested by admin: {username}")
+        return {"success": True, "data": data}
+    except Exception as e:
+        logger.error(f"Failed to get monthly visitors: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/analytics/available-years")
+async def get_years(username: str = Depends(verify_token)):
+    """데이터가 존재하는 연도 목록 조회 (관리자 전용)"""
+    try:
+        years = get_available_years()
+        return {"success": True, "data": years}
+    except Exception as e:
+        logger.error(f"Failed to get available years: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn
