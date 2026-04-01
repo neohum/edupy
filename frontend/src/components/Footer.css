@@ -46,3 +46,25 @@
   color: #764ba2;
 }
 
+.footer-sponsor {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.footer-sponsor-logo {
+  height: 32px;
+  vertical-align: middle;
+  margin-bottom: 0.3rem;
+}
+
+.footer-sponsor a {
+  color: #667eea;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-sponsor a:hover {
+  color: #764ba2;
+}
+
