@@ -164,7 +164,7 @@ edupy.멈춤()                # = stop
 
 ## 7. 다음 작업 후보 (이어서 진행할 때 여기서 고르기)
 
-**현재 상태 (2026-05-13):** Phase 0 완료 — `docs/EDUPY_LIBRARY_PLAN.md`, `packages/edupy/`(라이브러리, CPython 에서 가짜 호스트로 end-to-end 시뮬레이션 검증), `frontend/src/pyodide/` + `frontend/src/pages/EduPyPlayground.tsx`(라우트 `/edupy`), `frontend/vite.config.ts`(`server.fs.allow:['..']`), `frontend/public/edupy-assets/turtle.png`. **아직 커밋 안 함.** 프론트엔드는 이 환경에 `node_modules` 가 없어 실제 `npm run dev` / `tsc -b` 미검증 — `cd frontend && npm install && npm run dev` → `/edupy` 에서 한 번 돌려봐야 함.
+**현재 상태 (2026-05-13):** Phase 0 완료 — `docs/EDUPY_LIBRARY_PLAN.md`, `packages/edupy/`(라이브러리, CPython 에서 가짜 호스트로 end-to-end 시뮬레이션 검증), `frontend/src/pyodide/` + `frontend/src/pages/EduPyPlayground.tsx`(라우트 `/edupy`), `frontend/vite.config.ts`(`server.fs.allow:['..']`), `frontend/public/edupy-assets/turtle.png`. **`main` 에 커밋·푸시됨 (commit 20f0392).** 단, 프론트엔드는 작업 환경에 `node_modules` 가 없어 실제 `npm run dev` / `tsc -b` 미검증 — `cd frontend && npm install && npm run dev` → `/edupy` 에서 한 번 돌려봐야 함.
 
 후보 (우선순위 순):
 1. **(최우선) 보급형 크롬북 실측 + Service Worker 캐싱.** 실제로 쓸 만한지 가장 먼저 확인. `frontend/src/pyodide/edupyRuntime.ts` 에 SW 등록 추가, Pyodide 런타임 + edupy 소스 캐시. `navigator.deviceMemory` 낮을 때 안내. 콜드스타트/메모리 측정.
