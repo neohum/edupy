@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /d D:\\\\works\\\\edupy)",
+      "Bash(dir /b)",
+      "Bash(python -c \"import sys; print\\(sys.version\\)\")",
+      "Bash(python -m pytest tests/ -q)",
+      "Bash(python -c ' *)",
+      "Bash(python *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit --amend -m ' *)",
+      "Bash(git push *)"
+    ]
+  }
+}
