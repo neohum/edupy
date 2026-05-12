@@ -1,0 +1,8 @@
+{
+  "id": "move_with_keys",
+  "title": "방향키로 움직이기",
+  "title_en": "Move with arrow keys",
+  "description": "← → ↑ ↓ 방향키로 캐릭터를 움직이고, 화면 밖으로 못 나가게 막아요.",
+  "tags": ["movement", "input"],
+  "code": "# --- 방향키 이동 코드 덩어리 ---\n속도 = 5\n\ndef 업데이트(dt):\n    if edupy.키눌림(\"왼쪽\"):\n        주인공.왼쪽으로(속도)\n    if edupy.키눌림(\"오른쪽\"):\n        주인공.오른쪽으로(속도)\n    if edupy.키눌림(\"위\"):\n        주인공.위로(속도)\n    if edupy.키눌림(\"아래\"):\n        주인공.아래로(속도)\n    주인공.화면안에_가두기()\n"
+}

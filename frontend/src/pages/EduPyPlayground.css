@@ -1,0 +1,157 @@
+.edupy-playground {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #f4f6fa;
+}
+
+.ep-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e3e7ee;
+  flex-wrap: wrap;
+}
+
+.ep-title {
+  font-size: 1.15rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ep-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  background: #f59e0b;
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.ep-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ep-btn {
+  border: 1px solid #cdd3dd;
+  background: #fff;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.ep-btn:hover:not(:disabled) { background: #f0f3f8; }
+.ep-btn:disabled { opacity: 0.5; cursor: default; }
+
+.ep-run {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  font-weight: 600;
+}
+.ep-run:hover:not(:disabled) { background: #1d4ed8; }
+
+.ep-status {
+  font-size: 0.82rem;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #eef1f6;
+  color: #555;
+}
+.ep-status-running { background: #dcfce7; color: #166534; }
+.ep-status-loading { background: #fef9c3; color: #854d0e; }
+.ep-status-error { background: #fee2e2; color: #991b1b; }
+
+.ep-main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 14px 20px 24px;
+  flex: 1;
+  min-height: 0;
+}
+
+@media (max-width: 880px) {
+  .ep-main { grid-template-columns: 1fr; }
+}
+
+.ep-editor-pane,
+.ep-stage-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.ep-pane-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ep-editor {
+  flex: 1;
+  min-height: 360px;
+  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  border: 1px solid #d6dbe4;
+  border-radius: 10px;
+  font-family: "JetBrains Mono", "D2Coding", Consolas, "Courier New", monospace;
+  font-size: 14px;
+  line-height: 1.55;
+  tab-size: 4;
+  background: #fbfcfe;
+  color: #1f2937;
+}
+.ep-editor:focus { outline: 2px solid #93c5fd; border-color: #93c5fd; }
+
+.ep-canvas-wrap {
+  background: #1f2430;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.ep-canvas {
+  max-width: 100%;
+  height: auto;
+  background: #fff;
+  border-radius: 6px;
+  display: block;
+  image-rendering: auto;
+}
+.ep-canvas:focus { outline: 2px solid #60a5fa; }
+
+.ep-console {
+  border: 1px solid #d6dbe4;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: "JetBrains Mono", "D2Coding", Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 10px 12px;
+  height: 150px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ep-log-empty { color: #64748b; }
+.ep-log { margin: 0 0 2px; }
+.ep-log-out { color: #e2e8f0; }
+.ep-log-info { color: #7dd3fc; }
+.ep-log-err { color: #fca5a5; }

@@ -14,6 +14,7 @@ import DataCurriculumSelect from './pages/DataCurriculumSelect';
 import AICurriculumSelect from './pages/AICurriculumSelect';
 import AlgorithmCurriculumSelect from './pages/AlgorithmCurriculumSelect';
 import CurriculumLearning from './pages/CurriculumLearning';
+import EduPyPlayground from './pages/EduPyPlayground';
 import { setupSessionTracking, trackPageView, trackPageLeave } from './utils/analytics';
 import './App.css';
 
@@ -59,6 +60,7 @@ function App() {
           <Route path="/ai" element={<AICurriculumSelect />} />
           <Route path="/algorithm" element={<AlgorithmCurriculumSelect />} />
           <Route path="/learn/:curriculumId" element={<CurriculumLearning />} />
+          <Route path="/edupy" element={<EduPyPlayground />} />
         </Routes>
       </Router>
     </ThemeProvider>

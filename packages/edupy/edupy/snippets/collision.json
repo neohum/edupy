@@ -1,0 +1,8 @@
+{
+  "id": "collision",
+  "title": "충돌 감지",
+  "title_en": "Collision detection",
+  "description": "주인공이 아이템에 닿으면 점수가 1 올라가고, 아이템이 새 위치로 옮겨가요.",
+  "tags": ["collision", "game"],
+  "code": "# --- 충돌 감지 코드 덩어리 ---\nimport random\n점수 = 0\n\ndef 업데이트(dt):\n    global 점수\n    if 주인공.충돌(아이템):\n        점수 = 점수 + 1\n        아이템.x = random.randint(20, edupy.화면_가로 - 20)\n        아이템.y = random.randint(20, edupy.화면_세로 - 20)\n\ndef 그리기():\n    edupy.화면_지우기(\"흰색\")\n    주인공.그리기()\n    아이템.그리기()\n    edupy.글자(\"점수: \" + str(점수), x=20, y=20, 크기=28, 색=\"검정\")\n"
+}
